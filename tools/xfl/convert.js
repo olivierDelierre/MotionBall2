@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Converts the XFL exports of the original .fla files (../xfl/<name>/) into
+ * Converts the XFL exports of the original .fla files (xfl/<name>/) into
  * a library the game draws at run time (src/gfx/xfl/) :
  *
  *   assets/xfl/<name>.json      symbols, shapes, bitmaps index
@@ -26,7 +26,7 @@ import { fileURLToPath } from "node:url";
 import { parseXml, kids, child } from "./xml.js";
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
-const XFL_DIR = path.join(ROOT, "..", "xfl");
+const XFL_DIR = path.join(ROOT, "xfl");
 const OUT_DIR = path.join(ROOT, "assets", "xfl");
 
 const round = v => Math.round(v * 100) / 100;

@@ -3,7 +3,7 @@
 A rewrite of **MotionBall 2** (Motion Twin, Frutiparc, 2005) for modern browsers.
 
 A new codebase with the rules, levels, graphics and sounds of the original Flash
-game (its ActionScript is in `../mb2/`), organised as a modern game:
+game (see [The original sources](#the-original-sources)), organised as a modern game:
 
 - the original art and animations: every symbol of `mb2.fla`, converted from
   its XFL export (`npm run xfl`, see [docs/XFL_INTEGRATION.md](docs/XFL_INTEGRATION.md))
@@ -33,7 +33,7 @@ npm run serve      # http://localhost:8000, rebuilds on reload
 npm run build      # writes dist/motionball2.js (commit it : index.html uses it)
 npm test           # the tests (Node 20+, about 10 s), see below
 npm run test:browser   # loads the built game in Chromium (needs Playwright)
-npm run levels     # regenerates src/data/levels.generated.js from ../dungeon/*.txt
+npm run levels     # regenerates src/data/levels.generated.js from dungeon/*.txt
 ```
 
 `motionball` is exposed in the browser console: `motionball.play("adventure", 4)`
@@ -63,6 +63,21 @@ Chromium, goes through the title and the menu, starts every mode and every
 boss, and fails on any error or missing file. It needs Playwright
 (`npm install --no-save playwright && npx playwright install chromium`, or
 `CHROMIUM_PATH` pointing to a Chromium), and skips itself otherwise.
+
+## The original sources
+
+This repository holds what the rewrite needs from the original game:
+
+- `xfl/`: the XFL exports of `mb2.fla`, `title.fla` and `mb2edit.fla` (the
+  art and animations; `npm run xfl` converts them into `assets/xfl/`);
+- `dungeon/`: the hand-made dungeons (adventures, courses, tutorial) saved by
+  the original level editor (`npm run levels` packs them into the game).
+
+The rest of the original game is archived in
+[WebGamesArchives, `Frutiparc/Games/motionBall2/`](https://github.com/olivierDelierre/WebGamesArchives/tree/main/Frutiparc/Games/motionBall2):
+the ActionScript 2 code (`mb2/*.as`, e.g. `Ball.as`, `Menu.as`, `BossTB.as`,
+named in the comments of the rewrite), the random dungeon generator
+(`mb2gen/`, OCaml), the `.fla` files, and the original sounds and images.
 
 ## Differences with the original
 

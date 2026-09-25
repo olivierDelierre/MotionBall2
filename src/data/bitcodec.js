@@ -4,7 +4,7 @@
  * The data is a stream of unsigned integers of variable bit sizes, written
  * most significant bit first, packed 6 bits per character with the alphabet
  * below. (The alphabet was not in the sources : it is the only ordering that
- * decodes all the rooms of ../dungeon/*.txt.)
+ * decodes all the rooms of dungeon/*.txt.)
  */
 
 const ALPHABET = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_";
