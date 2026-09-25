@@ -1,6 +1,6 @@
 # Using the decoded .fla (XFL) in the rewrite
 
-The original Flash files, saved as uncompressed XFL, are in `../xfl/` (`mb2/`,
+The original Flash files, saved as uncompressed XFL, are in `xfl/` (`mb2/`,
 `title/`, `mb2edit/`). This note says how they are turned into art the
 rewrite draws, and what uses them.
 
@@ -9,7 +9,7 @@ rewrite draws, and what uses them.
 `mb2.fla` and `goodies/title/title.fla` are Flash MX 2004 files, whose vector
 symbols are in an undocumented binary format. They were opened in Flash /
 Animate and saved as **uncompressed XFL** (`DOMDocument.xml`, `LIBRARY/*.xml`,
-`bin/*.dat`) into `../xfl/mb2`, `../xfl/title` (and `../xfl/mb2edit`, the level
+`bin/*.dat`) into `xfl/mb2`, `xfl/title` (and `xfl/mb2edit`, the level
 editor, unused). XFL is plain XML : layers, frames, labels, frame scripts,
 instance names, shapes as edge strings, tweens. To convert again after a
 change, run `npm run xfl`.
@@ -17,7 +17,7 @@ change, run `npm run xfl`.
 ## How it works
 
 ```
-../xfl/mb2/ (XFL)  --tools/xfl/convert.js-->  assets/xfl/mb2.json + assets/xfl/mb2/*.png
+xfl/mb2/ (XFL)     --tools/xfl/convert.js-->  assets/xfl/mb2.json + assets/xfl/mb2/*.png
                                                    |
                          src/gfx/xfl/  (library.js, clip.js, render.js, index.js)
                                                    |
@@ -93,5 +93,5 @@ Tests : `tests/xfl.test.js` (converter, library, Clip). `npm test` : 113 tests ;
   cache the still frames of static symbols as bitmaps.
 - The fonts of the texts (Kiloton, Polo, Pleasantly Plump...) are not in the
   XFL ; a web font replaces them.
-- `../xfl/mb2edit` (the level editor) is not converted : nothing in the game
+- `xfl/mb2edit` (the level editor) is not converted : nothing in the game
   needs it.

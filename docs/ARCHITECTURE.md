@@ -25,7 +25,7 @@ doors, find the coloured balls, beat the boss).
   [XFL_INTEGRATION.md](XFL_INTEGRATION.md)), played by a small timeline player
   (`gfx/xfl/clip.js`). The game code drives the symbols the way the original
   ActionScript did (`gotoAndPlay("hit")`, a needle's rotation, a text), but the
-  rules are the rewrite's own code : the original ActionScript (`../mb2/`) is
+  rules are the rewrite's own code : the original ActionScript (`mb2/*.as`, see the README) is
   a reference, it is not run.
 
 ## Layout
@@ -36,8 +36,10 @@ package.json          esbuild ; scripts build / serve / test / levels
 assets/xfl           the symbols of mb2.fla and title.fla (JSON) and their bitmaps (generated)
 assets/snd           the original sounds
 dist/                 the bundle built from src/ (committed : the game runs without a build)
-tools/build_levels.js packs ../dungeon/*.txt into src/data/levels.generated.js
-tools/xfl/           convert.js : ../xfl/ (XFL) -> assets/xfl ; gallery.js : xfl-gallery.html
+xfl/                  the XFL exports of the original .fla files (converted by tools/xfl/convert.js)
+dungeon/              the hand-made dungeons of the original level editor
+tools/build_levels.js packs dungeon/*.txt into src/data/levels.generated.js
+tools/xfl/           convert.js : xfl/ (XFL) -> assets/xfl ; gallery.js : xfl-gallery.html
 tests/                Node tests (see "Tests" below) ; browser/smoke.js : Chromium smoke test
 
 src/
@@ -278,7 +280,7 @@ small `FrameClock`, whatever the simulation rate.
 ## Level data
 
 - **Hand-made dungeons** (tutorial, 5 adventures, 7 courses) are the
-  `../dungeon/*.txt` files of the original level editor, packed into
+  `dungeon/*.txt` files of the original level editor, packed into
   `levels.generated.js` by `npm run levels`. Each line is a room: `NONE`,
   `DATA=<bits>` (an editor room), `START=<bits>`, `ITEM=<name>`, `END`.
   `data/dungeon.js` decodes them.
@@ -331,7 +333,7 @@ checks the real page in Chromium.
 | change what a boss does | its state methods in `bosses/` |
 | change a sound | `sounds.js` |
 | add a screen | a scene in `scenes/`, then `app.scenes.goto(new MyScene())` |
-| edit a hand-made dungeon | `../dungeon/*.txt`, then `npm run levels` and `npm run build` |
+| edit a hand-made dungeon | `dungeon/*.txt`, then `npm run levels` and `npm run build` |
 
 After a change in `src/`, run `npm test` and `npm run build` (the page loads
 `dist/`). A new behaviour deserves a test in `tests/game.test.js` : most are a
