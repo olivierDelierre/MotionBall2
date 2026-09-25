@@ -11,7 +11,7 @@
  * room after each sub-step (physics.js).
  */
 
-import { BALLS, BALL_RADIUS, PHYSICS, WATER, INVULNERABLE_TIME, TILE, TILE_ORIGIN, ORIGINAL_FPS } from "../config.js";
+import { BALLS, BALL_RADIUS, PHYSICS, WATER, INVULNERABLE_TIME, TILE, TILE_ORIGIN, CELL, ORIGINAL_FPS } from "../config.js";
 import { BallType, Item } from "../data/enums.js";
 import { Entity, Layer } from "./entity.js";
 import { collideBall } from "./physics.js";
@@ -230,8 +230,12 @@ export class Ball extends Entity {
 	 */
 	testHole(dt, game) {
 		const tiles = game.room.tiles;
-		const tx = Math.floor((this.x - TILE_ORIGIN) / TILE);
-		const ty = Math.floor((this.y - TILE_ORIGIN) / TILE);
+		// (the original tests the holes at its ball's position, which it draws
+		// half a cell further right and down : 2 pixels up-left of our centre)
+		const x = this.x - CELL / 2;
+		const y = this.y - CELL / 2;
+		const tx = Math.floor((x - TILE_ORIGIN) / TILE);
+		const ty = Math.floor((y - TILE_ORIGIN) / TILE);
 		const isHole = (x, y) => tiles.get(x, y) === Item.HOLE;
 
 		if (!isHole(tx, ty) || this.jump) {
@@ -250,10 +254,10 @@ export class Ball extends Entity {
 		this.vy *= boost;
 
 		// the edges of this tile that touch the floor, on the ball's side
-		let left = this.x < cx && !isHole(tx - 1, ty);
-		let right = this.x > cx && !isHole(tx + 1, ty);
-		let up = this.y < cy && !isHole(tx, ty - 1);
-		let down = this.y > cy && !isHole(tx, ty + 1);
+		let left = x < cx && !isHole(tx - 1, ty);
+		let right = x > cx && !isHole(tx + 1, ty);
+		let up = y < cy && !isHole(tx, ty - 1);
+		let down = y > cy && !isHole(tx, ty + 1);
 		if (left && right && up && down)
 			left = right = up = down = false;
 
@@ -264,38 +268,51 @@ export class Ball extends Entity {
 		if (down) this.vy -= pull;
 
 		const inside =
-			this.x > cx - half + (left ? R : 0) &&
-			this.x < cx + half - (right ? R : 0) &&
-			this.y > cy - half + (up ? R : 0) &&
-			this.y < cy + half - (down ? R : 0);
+			x > cx - half + (left ? R : 0) &&
+			x < cx + half - (right ? R : 0) &&
+			y > cy - half + (up ? R : 0) &&
+			y < cy + half - (down ? R : 0);
 
 		if (inside) {
 			this.startFall("hole", 1, game.room.holeClip());
 			return true;
 		}
-		if (this.type === BallType.BLUE && !this.justLanded)
+		if (this.type === BallType.BLUE && !this.justLanded) {
 			this.jump = { size: 0, way: 1 };
+			// (original : the take-off gets the whole push of a frame on a hole,
+			// the speed x 1.1 and the pull of 1 px / frame, not a slice of it)
+			const k = PHYSICS.holeBoost / boost;
+			this.vx *= k;
+			this.vy *= k;
+			const extra = PHYSICS.holePull / ORIGINAL_FPS - pull;
+			if (left) this.vx += extra;
+			if (right) this.vx -= extra;
+			if (up) this.vy += extra;
+			if (down) this.vy -= extra;
+		}
 		return false;
 	}
 
-	/** The blue ball's jump : it goes up and down in ~0.17 s, higher when fast. */
+	/** The blue ball's jump : it goes up and down in 0.225 s, higher when fast. */
 	updateJump(dt) {
 		const j = this.jump;
 		if (!j) {
 			this.height = 0;
 			return;
 		}
-		// (original : 60 per frame up to 200, then back to 0)
-		j.size += j.way * 60 * 40 * dt;
-		if (j.size > 200)
+		// (original : + 60 per frame, back down once over 200 ; it ends below 0.
+		// Frame by frame, it goes 60 ... 240, then 180 ... -60 : 9 frames in
+		// the air. Continuous, the same turns are at 240 and -60.)
+		j.size += j.way * 60 * ORIGINAL_FPS * dt;
+		if (j.size >= 240)
 			j.way = -1;
-		if (j.size < 0) {
+		if (j.size <= -60) {
 			this.jump = null;
 			this.height = 0;
 			this.justLanded = true;
 			return;
 		}
-		this.height = Math.sqrt(Math.max(0, j.size * this.speed / 40)) / 6;
+		this.height = Math.sqrt(Math.max(0, j.size * this.speed / ORIGINAL_FPS)) / 6;
 	}
 
 	// ----- falling and dying -----

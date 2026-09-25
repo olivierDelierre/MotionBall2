@@ -334,6 +334,31 @@ test("the blue ball jumps over a row of holes", () => {
 	assert.ok(g.ball.y < TILE_ORIGIN + 2 * TILE, "crossed the holes");
 });
 
+test("the blue ball's jump lasts 9 original frames, and clears the tutorial's double hole from a run-up", () => {
+	setup();
+	const g = newGame(Mode.TUTORIAL);
+	// the tutorial room with a column of holes 2 tiles wide (80 px)
+	const room = enterRoom(g, 2, 7);
+	assert.equal(room.tiles.get(3, 4), Item.HOLE);
+	assert.equal(room.tiles.get(4, 4), Item.HOLE);
+	g.inventory.balls[BallType.BLUE] = 3;
+	g.ball.setType(BallType.BLUE);
+	g.ball.placeAt(TILE_ORIGIN + 14, 205);
+	app.input.dir = { x: 1, y: 0 };
+	let takeoff = -1;
+	let air = 0;
+	runUntil(g, g => {
+		if (g.ball.jump && takeoff < 0)
+			takeoff = app.time;
+		if (!g.ball.jump && takeoff >= 0 && !air)
+			air = app.time - takeoff;
+		return g.ball.falling || g.ball.x > TILE_ORIGIN + 6 * TILE;
+	}, 3);
+	assert.ok(Math.abs(air - 0.225) < 0.02, "in the air 9 frames of 1 / 40 s : " + air);
+	assert.ok(!g.ball.falling, "over the holes, from the far left at full thrust");
+	assert.equal(g.inventory.balls[BallType.BLUE], 3);
+});
+
 // ----- obstacles -----
 
 test("a bumper throws the ball back hard", () => {
