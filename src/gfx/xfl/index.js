@@ -32,6 +32,7 @@ export function xflBitmapFiles() {
 }
 
 export { Clip };
+export { xflCache } from "./clip.js";
 
 /** Draws a clip at (x, y), with an optional rotation (radians), scale and alpha. */
 export function drawClip(ctx, c, x, y, rotation = 0, scale = 1, alpha = 1) {

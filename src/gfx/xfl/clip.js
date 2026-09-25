@@ -388,6 +388,34 @@ export class Clip {
 			withColor(ctx, color, lc => this.draw(lc), this.bounds());
 			return;
 		}
+		// (a clip drawn by the game, not inside another one : it may come from
+		// its bitmap cache, see drawCached)
+		if (!this.parent && drawCached(this, ctx))
+			return;
+		this.render(ctx);
+	}
+
+	/**
+	 * What the clip looks like : its symbol and frame (with the tweens' in
+	 * betweens), the named parts and texts the game changed, and the same for
+	 * its nested clips. The bitmap cache is valid while it stays the same.
+	 */
+	look() {
+		let key = this.name + "@" + this.drawFrame();
+		if (Object.keys(this.overrides).length)
+			key += JSON.stringify(this.overrides);
+		if (Object.keys(this.texts).length)
+			key += JSON.stringify(this.texts);
+		const v = this.vars;
+		if (v._rotate || v._flipY)
+			key += "r" + v._rotate + "f" + v._flipY;
+		for (const [k, c] of this.children)
+			key += "{" + k + ":" + (c.removed ? "x" : c.look()) + "}";
+		return key;
+	}
+
+	/** Draws the clip itself, at the origin of ctx (no cache). */
+	render(ctx) {
 		const lib = this.lib;
 		const layers = this.symbol.layers;
 		const v = this.vars;
@@ -521,6 +549,86 @@ export class Clip {
 		}
 		ctx.restore();
 	}
+}
+
+// ----- the bitmap cache -----
+
+/** The bitmap cache can be switched off (to compare, in the console : motionball.xflCache.enabled = false). */
+export const xflCache = { enabled: true };
+
+/** How many times in a row a clip must look the same before it is cached. */
+const CACHE_AFTER = 3;
+/**
+ * Clips larger than this part of the canvas are not cached : copying a
+ * bitmap that big costs more than drawing them (the room's background and
+ * border, the menu's background).
+ */
+const CACHE_MAX_AREA = 0.25;
+
+// (a font that loads later changes the texts : the caches are made again)
+let fontsVersion = 0;
+if (typeof document !== "undefined" && document.fonts && document.fonts.addEventListener)
+	document.fonts.addEventListener("loadingdone", () => fontsVersion++);
+
+/**
+ * Draws a clip from its bitmap cache, when it looked the same the last few
+ * times : drawing the vector shapes, masks and colour transforms of the
+ * symbols at the screen's resolution every frame is slow on some browsers
+ * (Firefox, or a canvas without GPU acceleration), and most of them do not
+ * change from one frame to the next.
+ *
+ * The bitmap is made at the exact resolution of the canvas and copied pixel
+ * for pixel (at a whole pixel) : a copy that has to be resampled costs more
+ * than drawing the shapes. So only clips drawn without rotation nor skew use
+ * it. Returns false when the clip must be drawn itself.
+ */
+function drawCached(clip, ctx) {
+	if (!xflCache.enabled || typeof document === "undefined" || !ctx.getTransform)
+		return false;
+	const t = ctx.getTransform();
+	if (!t || t.b !== 0 || t.c !== 0 || !(t.a > 0) || !(t.d > 0))
+		return false;
+	const key = clip.look() + "|" + t.a + "," + t.d + "|" + fontsVersion;
+	const c = clip.cache || (clip.cache = { key: null, same: 0, canvas: null, box: null });
+
+	if (key !== c.key) {
+		c.key = key;
+		c.same = 1;
+		c.box = null;
+		return false;
+	}
+	if (!c.box) {
+		if (++c.same < CACHE_AFTER)
+			return false;
+		// the clip has kept its look : draws it once into its bitmap
+		const b = clip.bounds();
+		if (!b)
+			return true;
+		// (a margin : the bounds do not count the thickness of the outlines)
+		const x0 = Math.floor((b[0] - 4) * t.a) - 2;
+		const y0 = Math.floor((b[1] - 4) * t.d) - 2;
+		const w = Math.ceil((b[2] + 4) * t.a) + 2 - x0;
+		const h = Math.ceil((b[3] + 4) * t.d) + 2 - y0;
+		if (w <= 0 || h <= 0 || w * h > CACHE_MAX_AREA * ctx.canvas.width * ctx.canvas.height) {
+			// (it will not change : no need to look at it again)
+			c.box = null;
+			c.same = -Infinity;
+			return false;
+		}
+		const canvas = c.canvas || (c.canvas = document.createElement("canvas"));
+		canvas.width = w;
+		canvas.height = h;
+		const cc = canvas.getContext("2d");
+		cc.setTransform(t.a, 0, 0, t.d, -x0, -y0);
+		clip.render(cc);
+		c.box = [x0, y0];
+	}
+	// (device pixels : the clip's origin is at (t.e, t.f))
+	ctx.save();
+	ctx.setTransform(1, 0, 0, 1, 0, 0);
+	ctx.drawImage(c.canvas, Math.round(t.e) + c.box[0], Math.round(t.f) + c.box[1]);
+	ctx.restore();
+	return true;
 }
 
 /** A matrix with some of its properties replaced by the code (like _x, _rotation...). */

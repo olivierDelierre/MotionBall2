@@ -197,3 +197,62 @@ test("clip : the tweens are drawn between frames, not the jumps nor the stops", 
 	water.update(0.5 / 40);
 	assert.equal(water.drawFrame(), 19, "no drawing between a frame and a jump");
 });
+
+test("clip : a clip that keeps its look is drawn from a bitmap, at the canvas' exact resolution", () => {
+	setup();
+	// a canvas context that records its drawings, with a transform (4 device pixels per pixel)
+	const made = [];
+	const record = () => {
+		const ctx = fakeContext();
+		ctx.calls = [];
+		ctx.matrix = { a: 4, b: 0, c: 0, d: 4, e: 400.3, f: 200 };
+		ctx.getTransform = () => ({ ...ctx.matrix });
+		ctx.drawImage = (...a) => ctx.calls.push(a);
+		ctx.canvas = { width: 2440, height: 1640 };
+		return ctx;
+	};
+	globalThis.document.createElement = () => {
+		const canvas = { width: 0, height: 0 };
+		canvas.getContext = () => (canvas.ctx = canvas.ctx || record());
+		made.push(canvas);
+		return canvas;
+	};
+	const ctx = record();
+	const bumper = clip("bnormal");
+	for (let i = 0; i < 2; i++)
+		bumper.draw(ctx);
+	assert.equal(made.length, 0, "not yet : drawn by itself while its look may change");
+	bumper.draw(ctx);
+	assert.equal(made.length, 1, "the third time, it is drawn once into a bitmap");
+	const cache = made[0];
+	assert.equal(bumper.cache.canvas, cache);
+	assert.equal(cache.width, Math.ceil((bumper.bounds()[2] + 4) * 4) + 2 - (Math.floor((bumper.bounds()[0] - 4) * 4) - 2), "at 4 device pixels per pixel");
+	for (let i = 0; i < 5; i++)
+		bumper.draw(ctx);
+	assert.equal(made.length, 1, "then copied");
+	const copy = ctx.calls.at(-1);
+	assert.equal(copy[0], cache);
+	assert.equal(copy.length, 3, "a copy at a whole pixel, not resampled");
+	assert.ok(Number.isInteger(copy[1]) && Number.isInteger(copy[2]));
+
+	// its look changes : drawn by itself again, until it stays the same
+	bumper.gotoAndPlay("hit");
+	bumper.update(1 / 40);
+	const n = ctx.calls.length;
+	bumper.draw(ctx);
+	assert.ok(ctx.calls.slice(n).every(c => c[0] !== cache), "drawn by itself, not from the old bitmap");
+
+	// rotated : never from the bitmap
+	const turned = clip("bnormal");
+	ctx.matrix = { a: 3, b: 2, c: -2, d: 3, e: 0, f: 0 };
+	for (let i = 0; i < 6; i++)
+		turned.draw(ctx);
+	assert.ok(!turned.cache || !turned.cache.box);
+
+	// larger than a quarter of the canvas (the room's background) : never cached
+	ctx.matrix = { a: 4, b: 0, c: 0, d: 4, e: 0, f: 0 };
+	const background = clip("background");
+	for (let i = 0; i < 6; i++)
+		background.draw(ctx);
+	assert.ok(!background.cache.box && !background.cache.canvas);
+});

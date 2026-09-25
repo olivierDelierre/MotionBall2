@@ -100,7 +100,7 @@ src/
     xfl/              the original symbols
       index.js        clip(name), drawClip, symbolCells (the original item sizes)
       library.js      the converted library : symbols, shapes, bitmaps
-      clip.js         Clip : a playing symbol instance (timeline, scripts, nested clips)
+      clip.js         Clip : a playing symbol instance (timeline, scripts, nested clips, bitmap cache)
       render.js       shapes, texts, masks, colour transforms, tweens
     draw.js           text and shape helpers (for what the symbols don't cover)
     ui.js             the pause buttons, the "pop" of the end panel

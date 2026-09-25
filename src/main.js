@@ -18,7 +18,7 @@ import { SOUND_FILES } from "./sounds.js";
 import { TitleScene } from "./scenes/title.js";
 import { applySettings } from "./scenes/menu.js";
 import { PlayScene } from "./scenes/play.js";
-import { xflBitmapFiles, clip } from "./gfx/xfl/index.js";
+import { xflBitmapFiles, clip, xflCache } from "./gfx/xfl/index.js";
 
 
 function start() {
@@ -120,4 +120,5 @@ start();
 //   motionball.scenes.current.game                  the game being played
 //   motionball.play("adventure", 2)                 starts a game
 window.motionball = app;
+app.xflCache = xflCache;
 app.play = (mode, param = 0) => app.scenes.goto(new PlayScene(mode, param), true);

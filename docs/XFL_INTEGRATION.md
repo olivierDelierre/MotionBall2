@@ -88,9 +88,13 @@ Tests : `tests/xfl.test.js` (converter, library, Clip). `npm test` : 113 tests ;
 
 ## Possible follow-ups
 
-- Performance : every entity draws its clip each frame (Path2D and gradients
-  are cached ; colour transforms go through an offscreen canvas). If needed,
-  cache the still frames of static symbols as bitmaps.
+- Performance : a clip drawn by the game that keeps its look (frame, nested
+  clips, overrides, texts) for 3 frames is drawn once into a bitmap at the
+  canvas' exact resolution, then copied pixel for pixel (`drawCached` in
+  clip.js). Not for rotated clips (the copy would be resampled), nor for
+  clips larger than a quarter of the canvas (copying them costs more than
+  drawing them). `motionball.xflCache.enabled = false` in the console switches
+  it off, to compare.
 - The fonts of the texts (Kiloton, Polo, Pleasantly Plump...) are not in the
   XFL ; a web font replaces them.
 - `xfl/mb2edit` (the level editor) is not converted : nothing in the game
