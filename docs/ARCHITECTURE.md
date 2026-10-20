@@ -82,7 +82,7 @@ src/
   scenes/             title, menu, play (pause and end panels), map, achievements
 ```
 
-The room is 610 x 410 pixels; the canvas is 610 x 482: a HUD band of 72 pixels
+The room is 610 x 410 pixels; the canvas is 610 x 462: a HUD band of 52 pixels
 on top, and the room under it (`Game.render` translates by `HUD_HEIGHT`).
 
 ## The main loop
