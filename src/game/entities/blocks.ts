@@ -7,8 +7,8 @@ import { Entity, Layer } from "../entity.js";
 import { BOUNCE } from "../physics.js";
 import { BallType, Item } from "../../data/enums.js";
 import { TILE } from "../../config.js";
-import { clip, drawClip } from "../../gfx/xfl/index.js";
-import { drawItemShadow } from "./bumpers.js";
+import { drawBlock, drawLoweredBlock, drawSwitch, PINK_BLOCK, BLUE_BLOCK } from "../../gfx/sprites.js";
+import { dropShadow } from "../../gfx/theme.js";
 import { app } from "../../app.js";
 import { Spark, Debris } from "./effects.js";
 
@@ -26,8 +26,7 @@ export class GreenBlock extends Entity {
 	declare bounce: any;
 	declare neighbours: number;
 	declare dead: boolean;
-	declare art: any;
-
+	
 
 	/** x, y = top-left corner, `data` = the item of the level data (to remember it is gone). */
 	constructor(x, y, data) {
@@ -68,11 +67,9 @@ export class GreenBlock extends Entity {
 		}
 	}
 
-	/** The "wall" symbol : one frame per combination of neighbours, so that they merge. */
+	/** Neighbouring blocks leave their shared sides open, so that they merge. */
 	render(ctx) {
-		const c = this.art || (this.art = clip("wall"));
-		c.gotoAndStop(this.neighbours);
-		drawClip(ctx, c, this.x, this.y);
+		drawBlock(ctx, this.left, this.top, this.neighbours);
 	}
 }
 
@@ -89,7 +86,7 @@ export class SwitchBlock extends Entity {
 	declare shape: any;
 	declare bounce: any;
 	declare solid: any;
-	declare art: any;
+	declare lift: number;
 	declare layer: any;
 
 
@@ -103,8 +100,8 @@ export class SwitchBlock extends Entity {
 		this.shape = { kind: "box", x, y, w: TILE, h: TILE };
 		this.bounce = BOUNCE.block;
 		this.solid = null;
-		// the symbol : "off" = up, "on" = down, "playOff" / "playOn" go there
-		this.art = clip(pink ? "interred" : "interblue");
+		// 1 = up, 0 = lowered into the floor (animated)
+		this.lift = 1;
 	}
 
 	isUp(game) {
@@ -114,12 +111,11 @@ export class SwitchBlock extends Entity {
 	update(dt, game) {
 		const up = this.isUp(game);
 		if (this.solid === null)
-			this.art.gotoAndStop(up ? "off" : "on");
-		else if (up !== this.solid)
-			this.art.gotoAndPlay(up ? "playOff" : "playOn");
+			this.lift = up ? 1 : 0;
+		else
+			this.lift = Math.max(0, Math.min(1, this.lift + (up ? 1 : -1) * dt / 0.25));
 		this.solid = up;
 		this.layer = up ? Layer.BLOCK : Layer.FLOOR;
-		this.art.update(dt);
 	}
 
 	onHit(game, contact) {
@@ -128,7 +124,20 @@ export class SwitchBlock extends Entity {
 	}
 
 	render(ctx) {
-		drawClip(ctx, this.art, this.x, this.y);
+		const palette = this.pink ? PINK_BLOCK : BLUE_BLOCK;
+		if (this.lift <= 0) {
+			drawLoweredBlock(ctx, this.left, this.top, palette);
+			return;
+		}
+		// rising: the block grows out of the floor
+		ctx.save();
+		const s = 0.85 + 0.15 * this.lift;
+		ctx.translate(this.left + TILE / 2, this.top + TILE / 2);
+		ctx.scale(s, s);
+		ctx.translate(-this.left - TILE / 2, -this.top - TILE / 2);
+		ctx.globalAlpha *= 0.4 + 0.6 * this.lift;
+		drawBlock(ctx, this.left, this.top, 0, palette);
+		ctx.restore();
 	}
 }
 
@@ -140,7 +149,7 @@ export class Switch extends Entity {
 	declare bounce: any;
 	declare cooldown: number;
 	declare on: any;
-	declare art: any;
+	declare press: number;
 
 
 	constructor(x, y) {
@@ -151,7 +160,7 @@ export class Switch extends Entity {
 		this.bounce = BOUNCE.block;
 		this.cooldown = 0;
 		this.on = null;
-		this.art = clip("interupt");
+		this.press = 0;
 	}
 
 	onHit(game, contact) {
@@ -162,24 +171,21 @@ export class Switch extends Entity {
 		app.audio.play("metal");
 		game.room.add(new Spark(contact.x, contact.y));
 		game.switchOn = !game.switchOn;
+		this.press = 1;
 	}
 
 	update(dt, game) {
 		this.cooldown = Math.max(0, this.cooldown - dt);
-		if (this.on === null)
-			this.art.gotoAndStop(game.switchOn ? "on" : "off");
-		else if (this.on !== game.switchOn)
-			this.art.gotoAndPlay(game.switchOn ? "playOn" : "playOff");
 		this.on = game.switchOn;
-		this.art.update(dt);
+		// pressed down for a moment after a toggle
+		this.press = Math.max(0, this.press - dt / 0.25);
 	}
 
 	renderShadow(ctx) {
-		drawItemShadow(ctx, Item.SWITCH, this.x - 2, this.y - 2);
+		dropShadow(ctx, this.x + 2, this.y + 6, 22, 14);
 	}
 
-	/** (the original draws the switch 2 pixels up-left of its collision) */
 	render(ctx) {
-		drawClip(ctx, this.art, this.x - 2, this.y - 2);
+		drawSwitch(ctx, this.x, this.y, !!this.on, this.press);
 	}
 }

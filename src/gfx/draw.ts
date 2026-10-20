@@ -1,20 +1,10 @@
 /**
- * Drawing helpers for what the original symbols don't cover : the texts of
- * the rewrite, its buttons, the touch joystick, the laser beams.
+ * Small drawing helpers: text and rounded shapes.
  */
 
-export const FONT = "'Baloo 2', 'Trebuchet MS', 'Arial Rounded MT Bold', Verdana, sans-serif";
+import { FONT } from "./theme.js";
 
-/** Colours of the balls (the laser beams) : main, dark edge, highlight. Indexed by BallType. */
-export const BALL_COLORS = [
-	["#ffd41c", "#b87a00", "#fffbd0"],   // yellow
-	["#95e04c", "#3a8a14", "#efffd8"],   // green
-	["#ee4a22", "#7a1004", "#ffc4a8"],   // red
-	["#ffa01e", "#c04c00", "#fff0b8"],   // orange
-	["#a8e2ff", "#3c86c4", "#ffffff"],   // blue
-	["#d2d6dc", "#646e7a", "#ffffff"],   // metal
-	["#bf84ea", "#6a2a9c", "#f6e6ff"]    // violet
-];
+export { FONT };
 
 /** Starts a new path with a circle. */
 export function circle(ctx, x, y, r) {
@@ -48,7 +38,7 @@ export function roundRectPath(ctx, x, y, w, h, r) {
  */
 export function text(ctx, str, x, y, options = {}) {
 	const size = options.size || 16;
-	ctx.font = (options.weight || "800") + " " + size + "px " + FONT;
+	ctx.font = (options.weight || "700") + " " + size + "px " + FONT;
 	ctx.textAlign = options.align || "center";
 	ctx.textBaseline = options.baseline || "middle";
 
@@ -62,7 +52,7 @@ export function text(ctx, str, x, y, options = {}) {
 			ctx.strokeStyle = options.outline;
 			ctx.strokeText(line, x, yy);
 		}
-		ctx.fillStyle = options.color || "#fff";
+		ctx.fillStyle = options.color || "#1E1545";
 		ctx.fillText(line, x, yy);
 		yy += lineHeight;
 	}

@@ -8,7 +8,7 @@
  * each item to convert one into the other.
  */
 
-import { WIDTH as W, HEIGHT as H, CELL, TILE, TILE_ORIGIN, TILES_X, TILES_Y } from "../config.js";
+import { WIDTH as W, HEIGHT as H, CELL, BORDER as B, CORNER_RADIUS as CORNER, TILE, TILE_ORIGIN, TILES_X, TILES_Y } from "../config.js";
 import { Item, RoomType, Exit, Mode, DungeonBonus, BallType, Icon } from "../data/enums.js";
 import { Layer } from "./entity.js";
 import { circleTouchesSegment } from "./physics.js";
@@ -17,29 +17,29 @@ import { Bumper, ClockBumper, DeathBumper, Magnet, GhostBumper } from "./entitie
 import { GreenBlock, SwitchBlock, Switch } from "./entities/blocks.js";
 import { Pastille, Hatch, BallPickup, ItemBox, Teleport } from "./entities/pickups.js";
 import { Zapper, makeBeams } from "./entities/zappers.js";
-import { roundRect } from "../gfx/draw.js";
-import { clip, drawClip, symbolCells } from "../gfx/xfl/index.js";
+import { drawHoles, blockShadow } from "../gfx/sprites.js";
+import { COLOR, roundedRect } from "../gfx/theme.js";
 import { app } from "../app.js";
 
-/** The original symbol of each item (their size places the items, see centreOf). */
-const ITEM_SYMBOLS = {
-	[Item.BUMPER]: "bnormal", [Item.CLOCK]: "btime", [Item.DEATH]: "bdeath", [Item.MAGNET]: "bmagnet",
-	[Item.GHOST]: "bshadow", [Item.BLOCK]: "wall", [Item.HOLE]: "wall", [Item.RED]: "red",
-	[Item.BLUE]: "blue", [Item.TELEPORT]: "bteleport", [Item.SWITCH]: "interupt", [Item.PINK_BLOCK]: "interred",
-	[Item.BLUE_BLOCK]: "interblue", [Item.ZAPPER]: "zapper", [Item.HATCH]: "exit"
+/**
+ * The size of each item in cells of 4 pixels. These come from the bounds of
+ * the symbols of the original game, which placed the items with them: the
+ * level data gives the top-left cell of an item, and its centre follows.
+ */
+const ITEM_CELLS = {
+	[Item.BUMPER]: 12, [Item.CLOCK]: 18, [Item.DEATH]: 10, [Item.MAGNET]: 10,
+	[Item.GHOST]: 14, [Item.BLOCK]: 10, [Item.HOLE]: 10, [Item.RED]: 6,
+	[Item.BLUE]: 6, [Item.TELEPORT]: 12, [Item.SWITCH]: 14, [Item.PINK_BLOCK]: 12,
+	[Item.BLUE_BLOCK]: 12, [Item.ZAPPER]: 12, [Item.HATCH]: 10
 };
 
-/**
- * Centre of an item of the data, like the original (Tools.set_mcpos) : the
- * data gives the top-left cell, and the symbol is centred on its size in
- * cells. (In Course mode the zappers are "checkpoint" symbols.)
- */
+/** Centre of an item of the data: the top-left cell, plus half its size (see ITEM_CELLS). */
 function centreOf(item, course) {
-	const name = item.type === Item.ZAPPER && course ? "checkpoint" : ITEM_SYMBOLS[item.type];
-	const cells = symbolCells(name);
+	const n = item.type === Item.ZAPPER && course ? 12 : ITEM_CELLS[item.type];
+	const cells = { w: n, h: n };
 	return {
-		x: (item.x + cells.w / 2) * CELL,
-		y: (item.y + cells.h / 2) * CELL,
+		x: (item.x + n / 2) * CELL,
+		y: (item.y + n / 2) * CELL,
 		cells
 	};
 }
@@ -80,7 +80,6 @@ export class Room {
 	declare rx: any;
 	declare ry: any;
 	declare data: any;
-	declare background: any;
 	declare entities: any;
 	declare tiles: any;
 	declare holes: any;
@@ -92,7 +91,7 @@ export class Room {
 	declare isBossRoom: any;
 	declare fixedColliders: any;
 	declare doors: any;
-	declare backgroundClip: any;
+	declare redsTotal: number;
 
 
 	/**
@@ -104,13 +103,13 @@ export class Room {
 		this.rx = rx;
 		this.ry = ry;
 		this.data = game.dungeon.room(rx, ry);
-		this.background = "bg0" + (1 + (rx + ry) % 4);
 		this.entities = [];
 		this.tiles = new TileGrid();
 		this.holes = [];            // { tx, ty } of each hole
 		this.blocks = [];           // green blocks (merged shapes, shadows)
 		this.beams = [];
 		this.redsLeft = 0;
+		this.redsTotal = 0;
 		this.hatch = null;
 		this.reserved = new Set();  // tiles about to become holes ("tx,ty")
 		this.isBossRoom = this.data.type === RoomType.BOSS;
@@ -185,6 +184,7 @@ export class Room {
 
 		case Item.RED:
 			this.redsLeft++;
+			this.redsTotal++;
 			return this.add(new Pastille(x, y, true, item));
 
 		case Item.BLUE:
@@ -359,8 +359,10 @@ export class Room {
 			door.update(dt, game);
 		// (entities may be added while updating : iterate on a copy)
 		for (const e of this.entities.slice())
-			if (!e.dead)
+			if (!e.dead) {
+				e.snapshot();
 				e.update(dt, game);
+			}
 		if (this.entities.some(e => e.dead))
 			this.entities = this.entities.filter(e => !e.dead);
 	}
@@ -391,13 +393,8 @@ export class Room {
 	 * (the ball, the boss), sorted by layer with the others.
 	 */
 	render(ctx, game, extras = []) {
-		if (!this.backgroundClip) {
-			// (the original "background" symbol : a frame per floor picture)
-			this.backgroundClip = clip("background");
-			this.backgroundClip.gotoAndStop((this.rx + this.ry) % 4);
-		}
-		drawClip(ctx, this.backgroundClip, 0, 0);
-		this.renderHoles(ctx);
+		this.renderFloor(ctx);
+		drawHoles(ctx, this.holes);
 		this.renderBlockShadows(ctx);
 
 		const all = this.entities.concat(extras);
@@ -415,40 +412,52 @@ export class Room {
 			all[i].render(ctx, game);
 	}
 
-	/** The border and the doors (drawn over the room). */
-	renderBorder(ctx, game) {
-		for (const door of this.doors)
-			door.render(ctx, game);
-		drawBorder(ctx);
-	}
-
-	/**
-	 * The holes show the "ground" symbol (the floor far below), except for a
-	 * back wall on their top edge when there is floor above them.
-	 */
-	renderHoles(ctx) {
-		if (!this.holes.length)
-			return;
-		const HOLE_WALL = 7;
-		const rect = h => ({ x: TILE_ORIGIN + h.tx * TILE + 1, y: TILE_ORIGIN + h.ty * TILE + 1 });
+	/** The lavender backdrop, and the violet floor with its 40 px grid. */
+	renderFloor(ctx) {
+		const bg = ctx.createRadialGradient(W / 2, 0, 0, W / 2, 0, W * 0.8);
+		bg.addColorStop(0, COLOR.backdropLight);
+		bg.addColorStop(1, COLOR.backdrop);
+		ctx.fillStyle = bg;
+		ctx.fillRect(0, 0, W, H);
 
 		ctx.save();
-		ctx.beginPath();
-		for (const h of this.holes) {
-			const r = rect(h);
-			ctx.rect(r.x, r.y, TILE, TILE);
-		}
+		roundedRect(ctx, B, B, W - 2 * B, H - 2 * B, CORNER);
+		const floor = ctx.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H * 0.45, W * 0.55);
+		floor.addColorStop(0, COLOR.floorLight);
+		floor.addColorStop(1, COLOR.floorDark);
+		ctx.shadowColor = "rgba(60,40,140,0.2)";
+		ctx.shadowBlur = 24;
+		ctx.shadowOffsetY = 8;
+		ctx.fillStyle = floor;
+		ctx.fill();
+		ctx.shadowColor = "transparent";
 		ctx.clip();
-		drawClip(ctx, ground || (ground = clip("ground")), 0, 0);
-
-		for (const h of this.holes) {
-			if (h.ty === 0 || this.tiles.get(h.tx, h.ty - 1) === Item.HOLE)
-				continue;
-			const r = rect(h);
-			ctx.fillStyle = "#9B76BC";
-			ctx.fillRect(r.x, r.y, TILE, HOLE_WALL);
+		ctx.strokeStyle = "rgba(255,255,255,0.16)";
+		ctx.lineWidth = 1;
+		ctx.beginPath();
+		for (let x = TILE_ORIGIN; x < W; x += TILE) {
+			ctx.moveTo(x + 0.5, 0);
+			ctx.lineTo(x + 0.5, H);
 		}
+		for (let y = TILE_ORIGIN; y < H; y += TILE) {
+			ctx.moveTo(0, y + 0.5);
+			ctx.lineTo(W, y + 0.5);
+		}
+		ctx.stroke();
+		// the inner glow of the edge
+		const edge = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, W * 0.62);
+		edge.addColorStop(0, "rgba(90,50,190,0)");
+		edge.addColorStop(1, "rgba(90,50,190,0.22)");
+		ctx.fillStyle = edge;
+		ctx.fillRect(0, 0, W, H);
 		ctx.restore();
+	}
+
+	/** The outline of the floor and the doors (drawn over the room). */
+	renderBorder(ctx, game) {
+		drawBorder(ctx, this.doors);
+		for (const door of this.doors)
+			door.render(ctx, this);
 	}
 
 	/**
@@ -459,8 +468,6 @@ export class Room {
 		if (!this.blocks.length)
 			return;
 		const isBlock = (x, y) => this.tiles.get(x, y) === Item.BLOCK;
-		const SHIFT = 4;
-		ctx.fillStyle = "rgba(0,0,0,0.2)";
 		for (const b of this.blocks) {
 			const tx = Math.round((b.left - TILE_ORIGIN) / TILE);
 			const ty = Math.round((b.top - TILE_ORIGIN) / TILE);
@@ -468,22 +475,17 @@ export class Room {
 				let n = 1;
 				while (isBlock(tx, ty + n))
 					n++;
-				roundRect(ctx, b.left + SHIFT, b.top + SHIFT, TILE, n * TILE, 8);
-				ctx.fill();
+				blockShadow(ctx, b.left, b.top, TILE, n * TILE);
 			}
 			if (!isBlock(tx - 1, ty)) {
 				let n = 1;
 				while (isBlock(tx + n, ty))
 					n++;
-				roundRect(ctx, b.left + SHIFT, b.top + SHIFT, n * TILE, TILE, 8);
-				ctx.fill();
+				blockShadow(ctx, b.left, b.top, n * TILE, TILE);
 			}
 		}
 	}
 }
-
-/** The floor under the holes (one clip for every room). */
-let ground = null;
 
 /** The items of the item boxes : icon, and what they give. */
 const BONUS_ITEMS = {

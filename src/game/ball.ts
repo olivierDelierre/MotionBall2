@@ -15,22 +15,15 @@ import { BALLS, BALL_RADIUS, PHYSICS, WATER, INVULNERABLE_TIME, TILE, TILE_ORIGI
 import { BallType, Item } from "../data/enums.js";
 import { Entity, Layer } from "./entity.js";
 import { collideBall } from "./physics.js";
-import { decay, randInt, TAU } from "../engine/math.js";
-import { clip, drawClip } from "../gfx/xfl/index.js";
+import { decay } from "../engine/math.js";
+import { drawBallSprite, drawBallShadow } from "../gfx/sprites.js";
 import { app } from "../app.js";
 
 const MAX_SUBSTEP = 4;
 
-/** The rolling spots of each colour : count and distance from the centre. */
-const SPOTS = [
-	{ count: 6, min: 10, max: 20, color: "#fff4a0" },
-	{ count: 20, min: 0, max: 20, color: "#2a7a10" },
-	{ count: 4, min: 14, max: 14, color: "#ffd0b0" },
-	{ count: 10, min: 0, max: 12, color: "#ffe070" },
-	{ count: 10, min: 6, max: 20, color: "#ffffff" },
-	{ count: 0, min: 0, max: 20, color: "#ffffff" },
-	{ count: 20, min: 0, max: 20, color: "#f0d0ff" }
-];
+/** How many past positions the speed trail remembers, and how often one is taken. */
+const TRAIL_LENGTH = 3;
+const TRAIL_INTERVAL = 1 / 40;
 
 export class Ball extends Entity {
 	declare radius: any;
@@ -48,7 +41,8 @@ export class Ball extends Entity {
 	declare justLanded: boolean;
 	declare height: any;
 	declare hidden: boolean;
-	declare spots: any;
+	declare trail: { x: number; y: number }[];
+	declare trailClock: number;
 	declare x: any;
 	declare y: any;
 
@@ -78,7 +72,8 @@ export class Ball extends Entity {
 		this.height = 0;              // jump height, in pixels
 
 		this.hidden = false;
-		this.spots = [];
+		this.trail = [];
+		this.trailClock = 0;
 		this.setType(BallType.YELLOW);
 	}
 
@@ -90,30 +85,9 @@ export class Ball extends Entity {
 		return BALLS[this.type];
 	}
 
-	/**
-	 * Changes the colour : the "marble" symbol shows it, and a few "stone"
-	 * clips roll on it (frames random(4) + 10 x colour), like Ball.as.
-	 */
+	/** Changes the colour. */
 	setType(type) {
 		this.type = type;
-		const s = SPOTS[type];
-		this.spots = [];
-		for (let i = 0; i < s.count; i++) {
-			const art = clip("stone");
-			art.gotoAndStop(randInt(4) + type * 10);
-			if (type === BallType.VIOLET) {
-				const sparkle = art.child("eclat");
-				if (sparkle)
-					sparkle.gotoAndPlay(randInt(30));
-			}
-			this.spots.push({
-				u: Math.random() * TAU,
-				v: Math.random() * TAU,
-				ray: s.min + randInt(s.max - s.min + 1),
-				rotation: Math.random() * TAU,
-				art
-			});
-		}
 	}
 
 	placeAt(x, y) {
@@ -148,7 +122,7 @@ export class Ball extends Entity {
 
 		this.steer(dt, game);
 		this.move(dt, game);
-		this.roll(dt);
+		this.updateTrail(dt);
 	}
 
 	/** Controls and speed. */
@@ -229,14 +203,19 @@ export class Ball extends Entity {
 		}
 	}
 
-	/** Fakes the rolling : each spot turns around the ball with the speed. */
-	roll(dt) {
-		for (const s of this.spots) {
-			s.art.update(dt);
-			// (original : 10 x the speed per frame, on a circle of 628 = 2 PI x 100)
-			s.u = (s.u + this.vx * dt * 0.1) % TAU;
-			s.v = (s.v + this.vy * dt * 0.1) % TAU;
+	/** Remembers where the ball was a moment ago (the speed trail). */
+	updateTrail(dt) {
+		this.trailClock += dt;
+		if (this.trailClock < TRAIL_INTERVAL)
+			return;
+		this.trailClock = 0;
+		if (this.speed < 60) {
+			this.trail.pop();
+			return;
 		}
+		this.trail.unshift({ x: this.x, y: this.y });
+		if (this.trail.length > TRAIL_LENGTH)
+			this.trail.pop();
 	}
 
 	// ----- holes -----
@@ -385,17 +364,15 @@ export class Ball extends Entity {
 	renderShadow(ctx) {
 		if (this.hidden || this.fall)
 			return;
-		drawClip(ctx, shadowClip || (shadowClip = clip("shadow")), this.x + 3, this.y + 3);
+		drawBallShadow(ctx, this.drawX, this.drawY - this.height * 0.3, 1 - this.height * 0.01);
 	}
 
 	render(ctx) {
 		if (this.hidden)
 			return;
 		// blinking while invulnerable
-		if (this.invulnerable > 0 && Math.floor(this.invulnerable * 40) % 2 === 0)
-			ctx.globalAlpha = 0.3;
-		else if (this.invulnerable > 0)
-			ctx.globalAlpha = 0.6;
+		if (this.invulnerable > 0)
+			ctx.globalAlpha = Math.floor(this.invulnerable * 20) % 2 === 0 ? 0.35 : 0.7;
 
 		ctx.save();
 		if (this.fall && this.fall.clip) {
@@ -405,52 +382,8 @@ export class Ball extends Entity {
 		}
 		// (original : x / y scale 100 % + 3 % per pixel of jump)
 		const scale = (this.fall ? this.fall.scale : 1) * (1 + this.height * 0.03);
-		ctx.translate(this.x, this.y - this.height);
-		ctx.scale(scale, scale);
-		drawBall(ctx, this.type, 1, this.spots);
+		drawBallSprite(ctx, this.drawX, this.drawY - this.height, this.type, scale, this.fall ? [] : this.trail);
 		ctx.restore();
 		ctx.globalAlpha = 1;
 	}
-}
-
-let shadowClip = null;
-const marbles = [];
-let light = null;
-
-/**
- * A ball, centred on (0, 0) (also used by the menus) : the "marble" symbol
- * (a frame per colour), the rolling stones clipped to its "round" mask
- * (radius 12), and the "light" reflection on top. `scale` : 1 = the size of
- * the game's ball.
- */
-export function drawBall(ctx, type, scale = 1, spots = null) {
-	const marble = marbles[type] || (marbles[type] = clip("marble"));
-	marble.gotoAndStop(type);
-	ctx.save();
-	if (scale !== 1)
-		ctx.scale(scale, scale);
-	marble.draw(ctx);
-
-	if (spots && spots.length) {
-		ctx.save();
-		ctx.beginPath();
-		ctx.arc(0, 0, 12, 0, TAU);
-		ctx.clip();
-		for (const s of spots) {
-			// (original : alpha = 50 + (xc + yc) x ray / BALL_RAYSIZE x 50 %)
-			const front = Math.cos(s.u + Math.PI / 2) + Math.cos(s.v + Math.PI / 2);
-			const alpha = 0.5 + front * (s.ray / BALL_RADIUS) * 0.5;
-			if (alpha <= 0.01)
-				continue;
-			ctx.save();
-			ctx.globalAlpha *= Math.min(1, alpha);
-			ctx.translate(Math.cos(s.u) * s.ray / 2, Math.sin(s.v) * s.ray / 2);
-			ctx.rotate(s.rotation);
-			s.art.draw(ctx);
-			ctx.restore();
-		}
-		ctx.restore();
-	}
-	(light || (light = clip("light"))).draw(ctx);
-	ctx.restore();
 }

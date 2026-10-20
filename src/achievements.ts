@@ -17,7 +17,8 @@
 
 import { WIDTH as W } from "./config.js";
 import { Mode, BallType } from "./data/enums.js";
-import { roundRect, text } from "./gfx/draw.js";
+import { text } from "./gfx/draw.js";
+import { COLOR, roundedRect } from "./gfx/theme.js";
 
 /** The dungeon balls of a Challenge : green, blue, metal, violet. */
 const DUNGEON_BALLS = [BallType.GREEN, BallType.BLUE, BallType.METAL, BallType.VIOLET];
@@ -198,14 +199,18 @@ export class Achievements {
 		const k = Math.min(1, t / 0.3, (BANNER_TIME - t) / 0.3);
 		const y = -30 + 52 * Math.max(0, k);
 		ctx.save();
-		ctx.fillStyle = "rgba(40,0,70,0.85)";
-		roundRect(ctx, W / 2 - 150, y - 20, 300, 42, 14);
+		ctx.shadowColor = "rgba(60,40,140,0.3)";
+		ctx.shadowBlur = 16;
+		ctx.shadowOffsetY = 4;
+		roundedRect(ctx, W / 2 - 150, y - 20, 300, 44, 22);
+		ctx.fillStyle = "#FFFFFF";
 		ctx.fill();
-		ctx.strokeStyle = "#ffe060";
+		ctx.shadowColor = "transparent";
+		ctx.strokeStyle = COLOR.green;
 		ctx.lineWidth = 2;
 		ctx.stroke();
-		text(ctx, "Succès débloqué !", W / 2, y - 7, { size: 12, color: "#ffe060", weight: "700" });
-		text(ctx, b.achievement.name, W / 2, y + 9, { size: 16, color: "#fff" });
+		text(ctx, "Succès débloqué !", W / 2, y - 7, { size: 11, color: COLOR.green, weight: "700" });
+		text(ctx, b.achievement.name, W / 2, y + 9, { size: 15, color: COLOR.ink, weight: "700" });
 		ctx.restore();
 	}
 }

@@ -12,7 +12,8 @@
 
 import { TILE, TILE_ORIGIN, WIDTH as W, HEIGHT as H, ORIGINAL_FPS } from "../config.js";
 import { Entity, Layer } from "../game/entity.js";
-import { clip } from "../gfx/xfl/index.js";
+import { drawWaterDrop, drawSplash, drawWetMark, drawFire, drawBud, drawVine, drawGust } from "../gfx/powers_art.js";
+import { app } from "../app.js";
 import { decay, dist, randInt, TAU } from "../engine/math.js";
 
 const FRAME = 1 / ORIGINAL_FPS;
@@ -63,7 +64,6 @@ export class Water extends Power {
 	declare drops: any;
 	declare trail: any;
 	declare clock: any;
-	declare art: any;
 	declare dead: boolean;
 	declare x: any;
 	declare y: any;
@@ -80,12 +80,10 @@ export class Water extends Power {
 		this.drops = [];                     // the splash
 		this.trail = [];                     // wet marks behind the ball
 		this.clock = new FrameClock();
-		this.art = clip("FXWater");
 	}
 
 	update(dt, game) {
 		const ball = game.ball;
-		this.art.update(dt);
 		this.updateSplash(dt);
 
 		if (this.hit) {
@@ -95,7 +93,7 @@ export class Water extends Power {
 			this.clock.run(dt, () => {
 				if (this.wet > 0 && !ball.falling && ball.speed > 20)
 					// (original : a mark 0.3 x the speed long, every frame)
-					this.trail.push({ x: ball.x + 2, y: ball.y + 2, a: Math.atan2(ball.vy, ball.vx) + Math.PI, len: ball.speed / 40 * 0.3, alpha: Math.min(this.wet, 1), art: clip("FXWaterQueue") });
+					this.trail.push({ x: ball.x + 2, y: ball.y + 2, a: Math.atan2(ball.vy, ball.vx) + Math.PI, len: ball.speed / 40 * 0.3, alpha: Math.min(this.wet, 1), age: 0 });
 			});
 			if (this.wet <= 0 && this.drops.length === 0 && this.trail.length === 0) {
 				ball.water = false;
@@ -132,10 +130,10 @@ export class Water extends Power {
 			d.size -= 2 * dt;
 		}
 		this.drops = this.drops.filter(d => d.size > 0.05);
-		// ("FXWaterQueue" removes itself)
+		// the marks dry in 0.5 s
 		for (const t of this.trail)
-			t.art.update(dt);
-		this.trail = this.trail.filter(t => !t.art.removed);
+			t.age += dt;
+		this.trail = this.trail.filter(t => t.age < 0.5);
 	}
 
 	destroy() {
@@ -144,43 +142,14 @@ export class Water extends Power {
 			this.dead = true;
 	}
 
-	/** "FXWater" (the drop), "FXWaterParticule" (the splash), "FXWaterQueue" (the marks). */
 	render(ctx) {
-		for (const t of this.trail) {
-			ctx.save();
-			ctx.translate(t.x, t.y);
-			ctx.rotate(t.a);
-			// (original : xscale = 3 x the speed in px / frame)
-			ctx.scale(t.len * 10 / 100, 1);
-			ctx.globalAlpha = t.alpha;
-			t.art.draw(ctx);
-			ctx.restore();
-		}
-		for (const d of this.drops) {
-			const art = drop(d.frame);
-			ctx.save();
-			ctx.translate(d.x, d.y);
-			ctx.scale(d.size, d.size);
-			art.draw(ctx);
-			ctx.restore();
-		}
-		if (this.hit)
-			return;
-		ctx.save();
-		ctx.translate(this.x, this.y);
-		this.art.draw(ctx);
-		ctx.restore();
+		for (const t of this.trail)
+			drawWetMark(ctx, t.x, t.y, t.a, t.len, t.alpha * (1 - t.age / 0.5));
+		for (const d of this.drops)
+			drawSplash(ctx, d.x, d.y, d.size);
+		if (!this.hit)
+			drawWaterDrop(ctx, this.x, this.y, this.angle, app.time);
 	}
-}
-
-/** The three frames of "FXWaterParticule" (still images, shared). */
-const drops = [];
-function drop(frame) {
-	if (!drops[frame]) {
-		drops[frame] = clip("FXWaterParticule");
-		drops[frame].gotoAndStop(frame);
-	}
-	return drops[frame];
 }
 
 // ----- fire -----
@@ -199,9 +168,6 @@ export class Fire extends Power {
 		this.age = 0;
 		this.life = 10 + randInt(10);
 		this.ending = -1;       // seconds since it started dying down
-		// ("FXFire" : starts, loops while flLoopv, then dies down and removes itself)
-		this.art = clip("FXFire");
-		this.art.vars.flLoopv = true;
 	}
 
 	get burning() {
@@ -210,11 +176,9 @@ export class Fire extends Power {
 
 	update(dt, game) {
 		this.age += dt;
-		this.art.update(dt);
 		if (this.ending >= 0) {
-			this.art.vars.flLoopv = false;
 			this.ending += dt;
-			if (this.art.removed || this.ending > 1)
+			if (this.ending > 1)
 				this.dead = true;
 			return;
 		}
@@ -238,10 +202,9 @@ export class Fire extends Power {
 	}
 
 	render(ctx) {
-		ctx.save();
-		ctx.translate(this.x, this.y);
-		this.art.draw(ctx);
-		ctx.restore();
+		const grow = Math.min(1, this.age / 0.375);
+		const fade = this.ending < 0 ? 1 : Math.max(0, 1 - this.ending);
+		drawFire(ctx, this.x, this.y, grow, fade, app.time);
 	}
 }
 
@@ -263,8 +226,6 @@ export class Earth extends Power {
 	declare breaking: any;
 	declare withering: number;
 	declare clock: any;
-	declare art: any;
-	declare links: any;
 	declare dead: boolean;
 
 
@@ -278,21 +239,15 @@ export class Earth extends Power {
 		this.breaking = -1;      // the vine fades out
 		this.withering = -1;
 		this.clock = new FrameClock();
-		// ("FXbourgeon" : grows, "explode" when it ties the ball, "death")
-		this.art = clip("FXbourgeon");
-		this.links = [];         // the "FXLiane" of the vine
 	}
 
 	update(dt, game) {
 		this.age += dt;
 		const ball = game.ball;
-		this.art.update(dt);
 
 		if (this.withering >= 0) {
-			if (this.withering === 0)
-				this.art.gotoAndPlay("death");
 			this.withering += dt;
-			if (this.art.removed || this.withering > 1)
+			if (this.withering > 1)
 				this.dead = true;
 			return;
 		}
@@ -318,12 +273,8 @@ export class Earth extends Power {
 		}
 		if (dist(this.x, this.y, ball.x, ball.y) < 30) {
 			this.vine = [];
-			this.links = [];
-			for (let i = 0; i < VINE_SEGMENTS; i++) {
+			for (let i = 0; i < VINE_SEGMENTS; i++)
 				this.vine.push({ x: this.x, y: this.y, vx: 0, vy: 0 });
-				this.links.push(clip("FXLiane"));
-			}
-			this.art.gotoAndPlay("explode");
 		}
 	}
 
@@ -376,32 +327,15 @@ export class Earth extends Power {
 	}
 
 	render(ctx, game) {
-		ctx.save();
-		ctx.translate(this.x, this.y);
-		this.art.draw(ctx);
-		ctx.restore();
+		drawBud(ctx, this.x, this.y, Math.min(1, this.age / 0.5), !!this.vine, Math.max(0, Math.min(1, this.withering)));
 
-		// the vine : each "FXLiane" turned toward the next one, its "liane" stretched
+		// the vine, drawn between its last two frames (it moves 40 times per second)
 		if (this.vine) {
-			ctx.save();
-			// (original : -10 % alpha per frame when it breaks)
-			ctx.globalAlpha = this.breaking < 0 ? 1 : Math.max(0, 1 - this.breaking / 0.25);
-			// (the vine moves 40 times per second : drawn between its last two frames)
 			const k = Math.min(1, this.clock.time / FRAME);
 			const points = this.vine.map(m => m.px === undefined ? m : { x: m.px + (m.x - m.px) * k, y: m.py + (m.y - m.py) * k })
 				.concat([game.ball]);
-			for (let i = 0; i < this.vine.length; i++) {
-				const a = points[i];
-				const b = points[i + 1];
-				const link = this.links[i];
-				link.set("liane", { xscale: Math.hypot(b.x - a.x, b.y - a.y) / 100 });
-				ctx.save();
-				ctx.translate(a.x, a.y);
-				ctx.rotate(Math.atan2(b.y - a.y, b.x - a.x));
-				link.draw(ctx);
-				ctx.restore();
-			}
-			ctx.restore();
+			// (original : -10 % alpha per frame when it breaks)
+			drawVine(ctx, points, this.breaking < 0 ? 1 : Math.max(0, 1 - this.breaking / 0.25));
 		}
 	}
 }
@@ -425,7 +359,7 @@ export class Wind extends Power {
 		this.time = 2;
 		this.strength = strong ? 30 : 10;
 		// the 5 "FXWind" turning around (their previous position gives their direction)
-		this.gusts = [0, 1, 2, 3, 4].map(i => ({ a: TAU * i / 5, ox: this.x, oy: this.y, rot: 0, art: clip("FXWind") }));
+		this.gusts = [0, 1, 2, 3, 4].map(i => ({ a: TAU * i / 5, ox: this.x, oy: this.y, rot: 0 }));
 	}
 
 	update(dt, game) {
@@ -466,7 +400,7 @@ export class Wind extends Power {
 			ctx.translate(x, y);
 			ctx.rotate(g.rot);
 			ctx.scale(scale, scale);
-			g.art.draw(ctx);
+			drawGust(ctx);
 			ctx.restore();
 		}
 	}

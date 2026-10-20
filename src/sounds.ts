@@ -3,7 +3,7 @@
  * (The file names are those of the original game's library.)
  */
 
-const dir = "assets/snd/";
+const dir = "snd/";
 
 /** Sound name -> file. */
 export const SOUND_FILES = {

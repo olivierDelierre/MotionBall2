@@ -25,6 +25,12 @@ export const Layer = Object.freeze({
 	TOP: 8
 });
 
+import { app } from "../app.js";
+
+function lerpPos(a: number, b: number): number {
+	return Math.abs(b - a) > 40 ? b : a + (b - a) * app.alpha;
+}
+
 export class Entity {
 	declare x: any;
 	declare y: any;
@@ -38,11 +44,32 @@ export class Entity {
 	constructor(x = 0, y = 0, layer = Layer.OBJECT) {
 		this.x = x;
 		this.y = y;
+		this.prevX = x;
+		this.prevY = y;
 		this.layer = layer;
 		this.dead = false;
 		this.shape = null;
 		this.solid = false;
 		this.bounce = null;
+	}
+
+	/** Position at the start of the last step (for drawing between steps). */
+	prevX = 0;
+	prevY = 0;
+
+	/** Called by the room before each update. */
+	snapshot() {
+		this.prevX = this.x;
+		this.prevY = this.y;
+	}
+
+	/** Position to draw: between the last two steps, unless it just jumped (teleport, respawn). */
+	get drawX() {
+		return lerpPos(this.prevX, this.x);
+	}
+
+	get drawY() {
+		return lerpPos(this.prevY, this.y);
 	}
 
 	update(dt, game) { }

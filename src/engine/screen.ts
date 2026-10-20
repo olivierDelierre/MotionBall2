@@ -7,7 +7,7 @@
  * `begin()` at the start of each frame to set the matching transform.
  */
 
-import { WIDTH, HEIGHT } from "../config.js";
+import { WIDTH, VIEW_HEIGHT as HEIGHT } from "../config.js";
 
 export class Screen {
 	declare canvas: any;

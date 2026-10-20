@@ -13,8 +13,15 @@
 export const WIDTH = 610;
 export const HEIGHT = 410;
 
+/** Height of the HUD band above the room; the canvas is WIDTH x VIEW_HEIGHT. */
+export const HUD_HEIGHT = 72;
+export const VIEW_HEIGHT = HEIGHT + HUD_HEIGHT;
+
 /** Thickness of the green border around the room. */
 export const BORDER = 25;
+
+/** Radius of the rounded inside corners of the room. */
+export const CORNER_RADIUS = 22;
 
 /** Width of the door openings, centred on each side of the room. */
 export const DOOR_SIZE = 110;
@@ -68,13 +75,13 @@ export const PHYSICS = {
  * inertia (the speed is multiplied by it every original frame), max speed.
  */
 export const BALLS = [
-	{ name: "Jaune",    color: "#ffd21e", accel: 0.85 * 1600, inertia: 0.94, maxSpeed: 800 },
-	{ name: "Verte",    color: "#3fbf2a", accel: 0.85 * 1600, inertia: 0.94, maxSpeed: 800 },
-	{ name: "Rouge",    color: "#e8302a", accel: 0.60 * 1600, inertia: 0.95, maxSpeed: 800 },
-	{ name: "Orange",   color: "#ff8c1a", accel: 2.10 * 1600, inertia: 0.85, maxSpeed: 800 },
-	{ name: "Bleue",    color: "#3aa0ff", accel: 0.85 * 1600, inertia: 0.94, maxSpeed: 800 },
-	{ name: "Métal",    color: "#c8ccd6", accel: 0.20 * 1600, inertia: 0.98, maxSpeed: 280 },
-	{ name: "Violette", color: "#a64dff", accel: 0.85 * 1600, inertia: 0.94, maxSpeed: 800 }
+	{ name: "Jaune",    color: "#FFC21E", accel: 0.85 * 1600, inertia: 0.94, maxSpeed: 800 },
+	{ name: "Verte",    color: "#5FCB2B", accel: 0.85 * 1600, inertia: 0.94, maxSpeed: 800 },
+	{ name: "Rouge",    color: "#FF4D5E", accel: 0.60 * 1600, inertia: 0.95, maxSpeed: 800 },
+	{ name: "Orange",   color: "#FF8A1A", accel: 2.10 * 1600, inertia: 0.85, maxSpeed: 800 },
+	{ name: "Bleue",    color: "#3A8DFF", accel: 0.85 * 1600, inertia: 0.94, maxSpeed: 800 },
+	{ name: "Métal",    color: "#B8BFD0", accel: 0.20 * 1600, inertia: 0.98, maxSpeed: 280 },
+	{ name: "Violette", color: "#A64DFF", accel: 0.85 * 1600, inertia: 0.94, maxSpeed: 800 }
 ];
 
 /** Slippery floor (water power of the snakes). */

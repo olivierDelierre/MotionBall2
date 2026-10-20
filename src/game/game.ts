@@ -13,7 +13,7 @@
  *   over      the game is over (the scene shows the result)
  */
 
-import { WIDTH as W, HEIGHT as H, BORDER as B, BALL_RADIUS, ROOM_SCROLL_TIME } from "../config.js";
+import { WIDTH as W, HEIGHT as H, VIEW_HEIGHT, HUD_HEIGHT, BORDER as B, BALL_RADIUS, ROOM_SCROLL_TIME, SIM_RATE } from "../config.js";
 import { Mode, Exit, BallType, DIR_DX, DIR_DY, OPPOSITE, Dir } from "../data/enums.js";
 import { MODES } from "./modes.js";
 import { Inventory } from "./inventory.js";
@@ -23,6 +23,7 @@ import { Hud } from "./hud.js";
 import { createBoss } from "../bosses/index.js";
 import { ease, randInt } from "../engine/math.js";
 import { GAME_MUSIC, MUSIC_VOLUME } from "../sounds.js";
+import { COLOR } from "../gfx/theme.js";
 import { app } from "../app.js";
 
 export class Game {
@@ -210,6 +211,7 @@ export class Game {
 			return;
 		}
 		if (this.state === "over") {
+			this.ball.snapshot();
 			this.room.update(dt, this);
 			return;
 		}
@@ -221,6 +223,8 @@ export class Game {
 		if (this.rules.ballSwitch && app.input.pressed("switchBall"))
 			this.switchBall();
 
+		this.ball.snapshot();
+		this.boss?.snapshot();
 		this.room.update(dt, this);
 		this.ball.update(dt, this);
 		if (this.boss)
@@ -387,6 +391,19 @@ export class Game {
 	// ----- drawing -----
 
 	render(ctx) {
+		const bg = ctx.createRadialGradient(W / 2, 0, 0, W / 2, 0, W * 0.8);
+		bg.addColorStop(0, COLOR.backdropLight);
+		bg.addColorStop(1, COLOR.backdrop);
+		ctx.fillStyle = bg;
+		ctx.fillRect(0, 0, W, VIEW_HEIGHT);
+		this.hud.renderBand(ctx);
+
+		// the room, under the band
+		ctx.save();
+		ctx.translate(0, HUD_HEIGHT);
+		ctx.beginPath();
+		ctx.rect(0, 0, W, H);
+		ctx.clip();
 		if (this.state === "scroll") {
 			this.renderScroll(ctx);
 		} else {
@@ -398,13 +415,15 @@ export class Game {
 			if (this.boss && this.boss.renderTop)
 				this.boss.renderTop(ctx, this);
 		}
-		this.hud.render(ctx);
+		this.hud.renderOverlay(ctx);
+		ctx.restore();
 	}
 
 	/** The two rooms slide ; the ball goes with them. */
 	renderScroll(ctx) {
 		const s = this.scroll;
-		const k = ease.inOutQuad(Math.min(1, s.t));
+		// (drawn between the last two steps, for a smooth slide at any frame rate)
+		const k = ease.inOutQuad(Math.max(0, Math.min(1, s.t - (1 - app.alpha) / SIM_RATE / ROOM_SCROLL_TIME)));
 		const dx = DIR_DX[s.dir] * W;
 		const dy = DIR_DY[s.dir] * H;
 		ctx.save();

@@ -1,69 +1,69 @@
 /**
  * The round bumpers : normal, clock, death, magnet and invisible ("ghost").
  *
- * They are drawn with the original symbols ("bnormal", "btime"...), whose
- * "hit" animation plays when the ball hits them, over the shadow of their
- * type (the "ombre" symbol, one frame per item type).
+ * They are drawn with vector sprites (gfx/sprites.ts). `hitAge` is the time
+ * since the last hit: the "hit" pulse plays for HIT_TIME and a bumper cannot
+ * be hit again (sound, effect) while it plays.
  */
 
 import { Entity, Layer } from "../entity.js";
 import { BOUNCE } from "../physics.js";
 import { BallType, Item } from "../../data/enums.js";
-import { dist2, perFrameChance, smooth } from "../../engine/math.js";
-import { clip, drawClip } from "../../gfx/xfl/index.js";
+import { dist2, perFrameChance, smooth, TAU } from "../../engine/math.js";
+import { drawBumper, drawClockBumper, drawGear, drawMagnet, drawGhostBumper } from "../../gfx/sprites.js";
+import { dropShadow } from "../../gfx/theme.js";
 import { app } from "../../app.js";
 import { Spark } from "./effects.js";
 
-let shadows = null;
-
-/** The shadow of an item of the level data (frame = its type). */
-export function drawItemShadow(ctx, itemType, x, y) {
-	const c = shadows || (shadows = clip("ombre"));
-	c.gotoAndStop(itemType - 1);
-	drawClip(ctx, c, x, y);
-}
+/** Duration of the hit pulse (12 frames of the original at 40 per second). */
+const HIT_TIME = 0.3;
 
 class RoundBumper extends Entity {
 	declare itemType: any;
 	declare shape: any;
 	declare solid: boolean;
 	declare bounce: any;
-	declare art: any;
+	declare hitAge: number;
 
 
 	/**
 	 * @param x, y        centre
 	 * @param radius      collision radius
-	 * @param symbol      the original symbol
+	 * @param bounce      see physics.js
 	 */
-	constructor(x, y, radius, bounce, symbol, itemType) {
+	constructor(x, y, radius, bounce, itemType) {
 		super(x, y, Layer.OBJECT);
 		this.itemType = itemType;
 		this.shape = { kind: "circle", x, y, r: radius };
 		this.solid = true;
 		this.bounce = bounce;
-		this.art = clip(symbol);
-		this.art.stop();
+		this.hitAge = HIT_TIME;
+	}
+
+	/** 1 right after a hit, down to 0. */
+	get hit() {
+		return Math.max(0, 1 - this.hitAge / HIT_TIME);
 	}
 
 	/** Plays the hit animation, if it is not already playing (returns false then). */
 	animateHit() {
-		if (this.art.frame !== 0)
+		if (this.hitAge < HIT_TIME)
 			return false;
-		this.art.gotoAndPlay("hit");
+		this.hitAge = 0;
 		return true;
 	}
 
 	update(dt) {
-		this.art.update(dt);
+		this.hitAge = Math.min(HIT_TIME, this.hitAge + dt);
 	}
 
 	renderShadow(ctx) {
-		drawItemShadow(ctx, this.itemType, this.x, this.y);
+		const r = this.shape.r;
+		dropShadow(ctx, this.x + 3, this.y + r * 0.6, r * 1.3, r * 0.9);
 	}
 
 	render(ctx) {
-		drawClip(ctx, this.art, this.x, this.y);
+		drawBumper(ctx, this.x, this.y, this.shape.r * 1.2, this.hit);
 	}
 }
 
@@ -71,7 +71,7 @@ class RoundBumper extends Entity {
 export class Bumper extends RoundBumper {
 
 	constructor(x, y) {
-		super(x, y, 20, BOUNCE.bumper, "bnormal", Item.BUMPER);
+		super(x, y, 20, BOUNCE.bumper, Item.BUMPER);
 	}
 
 	onHit() {
@@ -89,9 +89,8 @@ export class ClockBumper extends RoundBumper {
 
 
 	constructor(x, y, game) {
-		super(x, y, 28, BOUNCE.clock, "btime", Item.CLOCK);
+		super(x, y, 28, BOUNCE.clock, Item.CLOCK);
 		this.shownTime = game.time;
-		this.setHands();
 	}
 
 	onHit(game) {
@@ -104,22 +103,34 @@ export class ClockBumper extends RoundBumper {
 	update(dt, game) {
 		super.update(dt);
 		this.shownTime = smooth(this.shownTime, game.time, 0.05, dt);
-		this.setHands();
 	}
 
-	/** (original : one turn of the small hand per hour, of the big one per minute) */
-	setHands() {
-		const ms = this.shownTime * 1000;
-		this.art.set("aig", { rotation: -ms / 3600 });
-		this.art.set("aig2", { rotation: -(ms % 3600) / 10 });
+	render(ctx) {
+		// the hands show the time left: one turn of the minute hand per minute
+		const t = this.shownTime;
+		drawClockBumper(ctx, this.x, this.y, this.shape.r * 1.28, -(t / 3600) * TAU, -(t / 60) * TAU, this.hit);
 	}
 }
 
 /** The death bumper : kills the ball, except the metal one. */
 export class DeathBumper extends RoundBumper {
+	declare spin: number;
+
 
 	constructor(x, y) {
-		super(x, y, 15, BOUNCE.death, "bdeath", Item.DEATH);
+		super(x, y, 15, BOUNCE.death, Item.DEATH);
+		this.spin = Math.random() * TAU;
+	}
+
+	update(dt) {
+		super.update(dt);
+		this.spin += dt * 1.6;
+	}
+
+	renderShadow() { }
+
+	render(ctx) {
+		drawGear(ctx, this.x, this.y, this.shape.r * 2.8, this.spin);
 	}
 
 	onHit(game) {
@@ -144,16 +155,18 @@ export class Magnet extends RoundBumper {
 
 
 	constructor(x, y) {
-		super(x, y, 20, BOUNCE.magnet, "bmagnet", Item.MAGNET);
+		super(x, y, 20, BOUNCE.magnet, Item.MAGNET);
 		this.attracting = true;
-		this.art.gotoAndPlay("plus");
+	}
+
+	render(ctx) {
+		drawMagnet(ctx, this.x, this.y, this.shape.r * 1.1, this.attracting, app.time, this.hit);
 	}
 
 	onHit() {
 		if (this.attracting) {
 			this.attracting = false;
 			app.audio.play("metal");
-			this.art.gotoAndPlay("neg");
 		}
 	}
 
@@ -175,7 +188,6 @@ export class Magnet extends RoundBumper {
 		// back to attracting, at random
 		if (!this.attracting && Math.random() < perFrameChance(1000, dt)) {
 			this.attracting = true;
-			this.art.gotoAndPlay("plus");
 		}
 	}
 }
@@ -189,7 +201,7 @@ export class GhostBumper extends RoundBumper {
 
 
 	constructor(x, y) {
-		super(x, y, 24, BOUNCE.ghost, "bshadow", Item.GHOST);
+		super(x, y, 24, BOUNCE.ghost, Item.GHOST);
 		this.alpha = 0;
 	}
 
@@ -216,7 +228,7 @@ export class GhostBumper extends RoundBumper {
 	renderShadow() { }
 
 	render(ctx) {
-		drawClip(ctx, this.art, this.x, this.y, 0, 1, this.alpha);
+		drawGhostBumper(ctx, this.x, this.y, this.shape.r, this.alpha, this.hit);
 	}
 }
 

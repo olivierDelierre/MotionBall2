@@ -4,16 +4,17 @@
  * goes back to the menu.
  */
 
-import { WIDTH as W, HEIGHT as H } from "../config.js";
+import { WIDTH as W, VIEW_HEIGHT as H } from "../config.js";
 import { ACHIEVEMENTS } from "../achievements.js";
-import { clip } from "../gfx/xfl/index.js";
-import { roundRect, text } from "../gfx/draw.js";
+import { text } from "../gfx/draw.js";
+import { COLOR, BALL_PALETTE, roundedRect, circlePath, sphere } from "../gfx/theme.js";
+import { backdrop } from "../gfx/ui.js";
 import { app } from "../app.js";
 import { MenuScene } from "./menu.js";
 
 const COLUMNS = 2;
-const TOP = 58;
-const ROW = 38;
+const TOP = 76;
+const ROW = 42;
 const CELL_W = 285;
 const LEFT = (W - CELL_W * COLUMNS - 10) / 2;
 
@@ -26,14 +27,10 @@ const day = ms => {
 
 export class AchievementsScene {
 	declare time: number;
-	declare bg: any;
-	declare icons: any;
 
 
 	constructor() {
 		this.time = 0;
-		this.bg = clip("fondMenu");
-		this.icons = new Map();      // ball type -> "marble" clip at that frame
 	}
 
 	update(dt) {
@@ -50,63 +47,60 @@ export class AchievementsScene {
 		app.scenes.goto(new MenuScene("main", "succes"));
 	}
 
-	icon(type) {
-		if (!this.icons.has(type)) {
-			const c = clip("marble");
-			c.gotoAndStop(type);
-			this.icons.set(type, c);
-		}
-		return this.icons.get(type);
-	}
-
-	render(ctx) {
-		this.bg.draw(ctx);
-		ctx.fillStyle = "rgba(40,0,70,0.45)";
-		ctx.fillRect(0, 0, W, H);
+	render(ctx: CanvasRenderingContext2D) {
+		backdrop(ctx, W, H, this.time);
 
 		const ach = app.achievements;
-		text(ctx, "Succès  " + ach.unlockedCount + " / " + ACHIEVEMENTS.length, W / 2, 28,
-			{ size: 24, color: "#ffe060", outline: "#4a1470" });
+		text(ctx, "Succès", W / 2, 34, { size: 28, color: COLOR.ink, weight: "800" });
+		text(ctx, ach.unlockedCount + " / " + ACHIEVEMENTS.length, W / 2, 58, { size: 14, color: COLOR.muted, weight: "600" });
 
 		ACHIEVEMENTS.forEach((a, i) => {
 			const x = LEFT + (i % COLUMNS) * (CELL_W + 10);
 			const y = TOP + Math.floor(i / COLUMNS) * ROW;
 			const done = ach.isUnlocked(a.id);
 			const hidden = a.secret && !done;
+			const h = ROW - 6;
 
-			ctx.fillStyle = done ? "rgba(255,255,255,0.22)" : "rgba(20,0,40,0.45)";
-			roundRect(ctx, x, y, CELL_W, ROW - 4, 10);
-			ctx.fill();
-
-			// the icon : a marble of the achievement's colour, dim while locked
 			ctx.save();
-			ctx.globalAlpha = done ? 1 : 0.3;
-			ctx.translate(x + 18, y + (ROW - 4) / 2);
-			ctx.scale(1.15, 1.15);
-			this.icon(a.ball).draw(ctx);
+			ctx.shadowColor = "rgba(60,40,140,0.12)";
+			ctx.shadowBlur = 10;
+			ctx.shadowOffsetY = 3;
+			roundedRect(ctx, x, y, CELL_W, h, 12);
+			ctx.fillStyle = done ? "#FFFFFF" : "rgba(255,255,255,0.55)";
+			ctx.fill();
 			ctx.restore();
+
+			// the icon: an orb of the achievement's colour, dim while locked
+			const [main, dark, light] = BALL_PALETTE[a.ball];
+			ctx.globalAlpha = done ? 1 : 0.3;
+			ctx.fillStyle = sphere(ctx, x + 20, y + h / 2, 11, [light, main, dark]);
+			circlePath(ctx, x + 20, y + h / 2, 11);
+			ctx.fill();
+			ctx.globalAlpha = 1;
 
 			const name = hidden ? "???" : a.name;
 			const desc = hidden ? "Un succès secret." : a.text;
-			text(ctx, name, x + 38, y + 11, { size: 13, color: done ? "#ffe060" : "#e8dcf4", align: "left" });
-			text(ctx, desc, x + 38, y + 25, { size: 10, color: done ? "#fff" : "#c8b8d8", align: "left", weight: "600" });
+			text(ctx, name, x + 40, y + 12, { size: 13, color: done ? COLOR.ink : COLOR.muted, align: "left", weight: "700" });
+			text(ctx, desc, x + 40, y + 27, { size: 10.5, color: COLOR.muted, align: "left", weight: "500" });
 
 			if (done) {
-				text(ctx, day(ach.date(a.id)), x + CELL_W - 8, y + 11, { size: 10, color: "#fff", align: "right", weight: "600" });
+				text(ctx, day(ach.date(a.id)), x + CELL_W - 10, y + 12, { size: 10, color: COLOR.green, align: "right", weight: "700" });
 			} else {
 				const p = ach.progress(a);
 				if (p) {
-					text(ctx, p.value + " / " + p.goal, x + CELL_W - 8, y + 11, { size: 10, color: "#e8dcf4", align: "right", weight: "600" });
-					ctx.fillStyle = "rgba(0,0,0,0.35)";
-					ctx.fillRect(x + CELL_W - 70, y + 20, 62, 4);
-					ctx.fillStyle = "#b4f08a";
-					ctx.fillRect(x + CELL_W - 70, y + 20, 62 * p.value / p.goal, 4);
+					text(ctx, p.value + " / " + p.goal, x + CELL_W - 10, y + 12, { size: 10, color: COLOR.muted, align: "right", weight: "600" });
+					roundedRect(ctx, x + CELL_W - 72, y + 22, 62, 5, 2.5);
+					ctx.fillStyle = "rgba(30,21,69,0.12)";
+					ctx.fill();
+					roundedRect(ctx, x + CELL_W - 72, y + 22, Math.max(5, 62 * p.value / p.goal), 5, 2.5);
+					ctx.fillStyle = COLOR.cyan;
+					ctx.fill();
 				}
 			}
 		});
 
 		if (this.time > 0.3)
-			text(ctx, "Clique ou appuie sur une touche pour revenir", W / 2, H - 8,
-				{ size: 11, color: "rgba(255,255,255,0.75)", weight: "700" });
+			text(ctx, "Clique ou appuie sur une touche pour revenir", W / 2, H - 14,
+				{ size: 12, color: COLOR.muted, weight: "600" });
 	}
 }

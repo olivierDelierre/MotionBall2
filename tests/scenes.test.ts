@@ -50,46 +50,48 @@ test("title : a tap goes to the menu too", () => {
 	assert.ok(app.scenes.current instanceof MenuScene);
 });
 
-/** Runs the menu until its transition is over (the balls fly out and back). */
-function settle(menu) {
-	for (let i = 0; i < 400 && menu.phase > 1 && !(app.scenes.current instanceof PlayScene); i++)
-		play(menu, STEP);
-}
-
-test("menu : the arrows go around the ring of modes, confirm opens them", () => {
+test("menu : the arrows move between the cards, confirm opens them", () => {
 	setup();
 	const menu = new MenuScene();
 	assert.equal(menu.group.focused.name, "challenge");
 	press(menu, "right");
 	assert.equal(menu.group.focused.name, "course");
+	press(menu, "down");
+	assert.equal(menu.group.focused.name, "classique");
+	press(menu, "up");
+	press(menu, "down");
 	press(menu, "left");
-	press(menu, "left");
-	assert.equal(menu.group.focused.name, "succes", "the ring goes round");
-	press(menu, "right");
+	assert.equal(menu.group.focused.name, "aventure");
+	press(menu, "up");
 	press(menu, "right");
 	press(menu, "confirm");
-	settle(menu);
 	assert.equal(menu.page, "course");
 	press(menu, "back");
-	settle(menu);
 	assert.equal(menu.page, "main");
 	assert.equal(menu.group.focused.name, "course", "the focus stays on the mode");
 });
 
-test("menu : the balls come in, turn, and a click on a mode starts it once they fly away", () => {
+test("menu : a click on a mode starts it", () => {
 	setup();
 	const menu = new MenuScene();
-	play(menu, 1.5);
-	assert.equal(menu.phase, 1, "the ring is in place");
+	play(menu, 0.6);
 	const classic = menu.group.buttons.find(b => b.name === "classique");
-	assert.ok(Math.abs(Math.hypot(classic.x - 305, classic.y - 205) - 136) < 12);
 	app.input.pointer = { x: classic.x, y: classic.y };
 	play(menu, STEP);
-	assert.equal(menu.phase, 2, "the balls fly away");
-	settle(menu);
 	assert.ok(app.scenes.current instanceof PlayScene);
 	assert.equal(app.scenes.current.mode, Mode.CLASSIC);
 	assert.ok(app.scenes.current.game, "the game is created");
+});
+
+test("menu : the cards slide in and the focused one grows", () => {
+	setup();
+	const menu = new MenuScene();
+	play(menu, STEP);
+	const first = menu.group.buttons[0];
+	assert.ok(first.focus < 0.2);
+	play(menu, 0.6);
+	assert.ok(first.focus > 0.95, "focused card is grown");
+	assert.ok(menu.group.buttons[1].focus < 0.05);
 });
 
 test("menu : locked adventures and courses can't be started", () => {
@@ -97,12 +99,9 @@ test("menu : locked adventures and courses can't be started", () => {
 	const menu = new MenuScene("adventure");
 	menu.group.focus = 4;
 	press(menu, "confirm");
-	settle(menu);
 	assert.ok(!(app.scenes.current instanceof PlayScene));
-	assert.equal(menu.phase <= 1, true);
 	menu.group.focus = 0;
 	press(menu, "confirm");
-	settle(menu);
 	assert.ok(app.scenes.current instanceof PlayScene);
 	assert.equal(app.scenes.current.mode, Mode.ADVENTURE);
 });
@@ -111,31 +110,30 @@ test("menu : the options toggle the music and the sounds", () => {
 	setup();
 	const menu = new MenuScene("options");
 	press(menu, "confirm");
-	settle(menu);
 	assert.equal(app.save.settings.music, false);
 	assert.equal(menu.page, "options");
-	press(menu, "right");
+	press(menu, "down");
 	press(menu, "confirm");
-	settle(menu);
 	assert.equal(app.save.settings.sounds, false);
 });
 
-test("menu : the volume sliders, dragged or with up / down on the ball", () => {
+test("menu : the volume sliders, with left / right or dragged", () => {
 	setup();
 	const menu = new MenuScene("options");
-	play(menu, 1.5);
+	play(menu, 0.6);
 	const s = app.save.settings;
 	assert.equal(s.musicVolume, 1);
-	// the music ball has the focus : down lowers its volume
-	press(menu, "down");
-	press(menu, "down");
+	press(menu, "left");
+	press(menu, "left");
 	assert.equal(s.musicVolume, 0.8);
 	assert.equal(app.audio.musicVolume, 0.8, "applied");
-	assert.equal(menu.group.focused.name, "music", "the ring did not turn");
+	assert.equal(menu.group.focused.name, "music", "the focus did not move");
 	// dragging the sounds slider to its middle
-	app.input.dragging = { x: 250 + 55, y: 238 };
+	const sounds = menu.group.buttons.find(b => b.name === "sounds");
+	const box = menu.sliderBox(sounds);
+	app.input.dragging = { x: box.x + box.w / 2, y: sounds.y };
 	play(menu, STEP * 2);
-	assert.equal(menu.group.focused.name, "sounds", "its ball gets the focus");
+	assert.equal(menu.group.focused.name, "sounds", "its card gets the focus");
 	app.input.dragging = null;
 	play(menu, STEP);
 	assert.equal(s.soundsVolume, 0.5);

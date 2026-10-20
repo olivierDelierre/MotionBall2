@@ -10,9 +10,8 @@
 import { Entity, Layer } from "../entity.js";
 import { BOUNCE } from "../physics.js";
 import { Item, BALL_TYPE_COUNT } from "../../data/enums.js";
-import { BALL_COLORS } from "../../gfx/draw.js";
-import { clip, drawClip } from "../../gfx/xfl/index.js";
-import { drawItemShadow } from "./bumpers.js";
+import { BALL_PALETTE, dropShadow } from "../../gfx/theme.js";
+import { drawZapper, drawBeam } from "../../gfx/sprites.js";
 import { app } from "../../app.js";
 import { Spark, BeamFlash } from "./effects.js";
 
@@ -23,7 +22,6 @@ export class Zapper extends Entity {
 	declare bounce: any;
 	declare checkpoint: any;
 	declare phase: any;
-	declare art: any;
 
 
 	/**
@@ -48,21 +46,12 @@ export class Zapper extends Entity {
 	}
 
 	renderShadow(ctx) {
-		drawItemShadow(ctx, Item.ZAPPER, this.x, this.y);
+		dropShadow(ctx, this.x + 3, this.y + 9, 20, 12);
 	}
 
-	/** The "zapper" symbol : a frame per colour ; in Course mode, "checkpoint". */
+	/** A post in the colour of its beams ; white in Course mode (a checkpoint). */
 	render(ctx) {
-		if (!this.art) {
-			this.art = clip(this.checkpoint ? "checkpoint" : "zapper");
-			this.art.gotoAndStop(this.checkpoint ? "off" : this.phase);
-		}
-		drawClip(ctx, this.art, this.x, this.y);
-	}
-
-	update(dt) {
-		if (this.art)
-			this.art.update(dt);
+		drawZapper(ctx, this.x, this.y, this.phase, this.checkpoint, app.time);
 	}
 }
 
@@ -97,18 +86,7 @@ export class Beam extends Entity {
 	}
 
 	render(ctx) {
-		const t = app.time * 6.7;
-		ctx.save();
-		ctx.lineWidth = 2;
-		ctx.setLineDash([4, 6]);
-		ctx.lineDashOffset = -t * 2;
-		ctx.strokeStyle = this.checkpoint ? "#ffffff" : BALL_COLORS[this.phase][0];
-		ctx.globalAlpha = 0.35 + 0.1 * Math.sin(t);
-		ctx.beginPath();
-		ctx.moveTo(this.a.x, this.a.y);
-		ctx.lineTo(this.b.x, this.b.y);
-		ctx.stroke();
-		ctx.restore();
+		drawBeam(ctx, this.a.x, this.a.y, this.b.x, this.b.y, this.checkpoint ? "#FFFFFF" : BALL_PALETTE[this.phase][0], app.time);
 	}
 }
 

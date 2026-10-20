@@ -5,7 +5,6 @@
  * `setup()` replaces those services (src/app.js) with fakes :
  *   - input : the tests set the direction (`input.dir`) and trigger actions ;
  *   - audio : records the sounds played ;
- *   - images : none (drawing code skips missing images) ;
  *   - a fake `document` and 2D context, so that the drawing code can run too
  *     (it draws nothing, but a typo in it would throw).
  * `Math.random` is replaced by a seeded generator : the tests are repeatable.
@@ -173,7 +172,6 @@ export function setup(seed = 1) {
 	installFakeDocument();
 	app.input = new FakeInput();
 	app.audio = new FakeAudio();
-	app.images = { get: () => null };
 	app.save = new Progress();
 	app.achievements = new Achievements(app.save);
 	app.scenes = { busy: false, current: null, goto(scene) { this.current = scene; if (scene.enter) scene.enter(); } };

@@ -4,12 +4,12 @@
  * title screen.
  */
 
-import { WIDTH as W, HEIGHT as H } from "./config.js";
+import "@fontsource-variable/outfit";
+import { WIDTH as W, VIEW_HEIGHT as H } from "./config.js";
 import { app } from "./app.js";
 import { Screen } from "./engine/screen.js";
 import { Input } from "./engine/input.js";
 import { AudioEngine } from "./engine/audio.js";
-import { ImageStore } from "./engine/assets.js";
 import { SceneManager } from "./engine/scenes.js";
 import { Loop } from "./engine/loop.js";
 import { Progress } from "./progress.js";
@@ -18,7 +18,8 @@ import { SOUND_FILES } from "./sounds.js";
 import { TitleScene } from "./scenes/title.js";
 import { applySettings } from "./scenes/menu.js";
 import { PlayScene } from "./scenes/play.js";
-import { xflBitmapFiles, clip } from "./gfx/xfl/index.js";
+import { COLOR, FONT, roundedRect } from "./gfx/theme.js";
+import { backdrop } from "./gfx/ui.js";
 
 
 function start() {
@@ -26,7 +27,6 @@ function start() {
 	app.screen = new Screen(canvas);
 	app.input = new Input(app.screen);
 	app.audio = new AudioEngine(SOUND_FILES);
-	app.images = new ImageStore();
 	app.save = new Progress();
 	app.achievements = new Achievements(app.save);
 	app.scenes = new SceneManager();
@@ -51,29 +51,29 @@ function start() {
 
 	// ----- loading -----
 
-	// ("loading" plays its animation, waits at "loadReady" until everything is
-	// loaded, then plays its end and calls "loadFinish")
-	let images = 0;
 	let sounds = 0;
 	let ready = false;
-	let finished = false;
-	const loading = clip("loading");
-	loading.on = event => {
-		if (event === "loadFinish")
-			finished = true;
-	};
+	let shown = 0;
 	let last = performance.now();
 	const drawLoading = now => {
-		loading.update(Math.min(0.1, (now - last) / 1000));
+		const dt = Math.min(0.1, (now - last) / 1000);
 		last = now;
-		loading.setText("progress", Math.floor((images + sounds) / 2 * 100) + " %");
-		if (ready && loading.frame >= loading.frameOf(10))
-			loading.play();
+		// the bar eases toward the real progress, and the screen leaves once it is full
+		shown += (sounds - shown) * (1 - Math.exp(-dt * 8));
 		const ctx = app.screen.begin();
-		ctx.fillStyle = "#fff";
-		ctx.fillRect(0, 0, W, H);
-		loading.draw(ctx);
-		if (finished) {
+		backdrop(ctx, W, H, now / 1000);
+		ctx.font = `800 34px ${FONT}`;
+		ctx.fillStyle = COLOR.ink;
+		ctx.textAlign = "center";
+		ctx.textBaseline = "middle";
+		ctx.fillText("MotionBall 2", W / 2, H / 2 - 40);
+		roundedRect(ctx, W / 2 - 110, H / 2, 220, 8, 4);
+		ctx.fillStyle = "rgba(30,21,69,0.12)";
+		ctx.fill();
+		roundedRect(ctx, W / 2 - 110, H / 2, Math.max(8, 220 * shown), 8, 4);
+		ctx.fillStyle = COLOR.green;
+		ctx.fill();
+		if (ready && shown > 0.98) {
 			applySettings();
 			app.scenes.goto(new TitleScene(), true);
 			new Loop(step, render).start();
@@ -83,16 +83,14 @@ function start() {
 	};
 	requestAnimationFrame(drawLoading);
 
-	const fonts = document.fonts ? document.fonts.ready.catch(() => { }) : Promise.resolve();
+	const fonts = document.fonts ? document.fonts.load(`800 34px ${FONT}`).catch(() => { }) : Promise.resolve();
 	Promise.all([
-		app.images.load(xflBitmapFiles(), p => {
-			images = p;
-		}),
 		app.audio.load(p => {
 			sounds = p;
 		}),
 		fonts
 	]).then(() => {
+		sounds = 1;
 		ready = true;
 	});
 }
@@ -107,7 +105,8 @@ function step(dt) {
 }
 
 /** One displayed frame. */
-function render() {
+function render(alpha = 1) {
+	app.alpha = alpha;
 	app.input.poll();
 	const ctx = app.screen.begin();
 	app.scenes.render(ctx);

@@ -17,7 +17,7 @@ import { Boss, ARENA } from "./common.js";
 import { Water, Fire, Earth, Wind } from "./powers.js";
 import { Entity, Layer } from "../game/entity.js";
 import { angleDiff, decay, weightedIndex, randInt, TAU } from "../engine/math.js";
-import { clip } from "../gfx/xfl/index.js";
+import { drawSnakePart, drawScale, drawElementLogo } from "../gfx/snake_art.js";
 import { app } from "../app.js";
 
 /** The elements, in the order of the adventures. */
@@ -91,7 +91,7 @@ export class Snake extends Boss {
 		this.parts = [];
 		for (let i = 0; i < RINGS + 2; i++) {
 			const kind = i === 0 ? "head" : i === RINGS + 1 ? "tail" : "ring";
-			this.parts.push({ kind, r: kind === "head" ? 20 : 25, scale: 1, x: this.x, y: this.y, angle: 0, spin: 0, art: this.makePartArt(kind, element) });
+			this.parts.push({ kind, r: kind === "head" ? 20 : 25, scale: 1, x: this.x, y: this.y, angle: 0, spin: 0 });
 		}
 		this.resizeRings();
 		this.path = [{ x: this.x, y: this.y, a: 0 }];
@@ -117,18 +117,6 @@ export class Snake extends Boss {
 		}
 	}
 
-	/**
-	 * A part : the "snake" symbol, frame head / ring / tail, its "gfx" at the
-	 * frame of the element (the head's skull "crane" too).
-	 */
-	makePartArt(kind, element) {
-		const art = clip("snake");
-		art.gotoAndStop(kind === "head" ? 0 : kind === "ring" ? 1 : 2);
-		art.child("gfx")?.gotoAndStop(element);
-		art.child("crane")?.gotoAndStop(element);
-		return art;
-	}
-
 	/** The eyes "o1", "o2" : red when angry, green when calm, yellow when berserk. */
 	get eyes() {
 		return this.berserk > 0 ? 2 : this.angry > 0 ? 0 : 1;
@@ -140,8 +128,6 @@ export class Snake extends Boss {
 		this.ball = game.ball;
 		this.powers = this.powers.filter(p => !p.dead);
 		this.updateScales(dt);
-		for (const p of this.parts)
-			p.art.update(dt);
 		this.bite = Math.max(0, this.bite - dt);
 
 		if (this.dying) {
@@ -280,7 +266,6 @@ export class Snake extends Boss {
 		if (this.inEllipse(head, ball, 42, 34, 0)) {
 			if (Math.abs(angleDiff(this.angle, this.angleToBall())) < 0.3) {
 				this.bite = 0.25;
-				this.parts[0].art.child("crane")?.child("anim")?.play();
 				if (this.angry === 0)
 					this.loseRing(game);
 				this.angry = 6 + randInt(4);
@@ -339,9 +324,7 @@ export class Snake extends Boss {
 		for (let i = 0; i < 5; i++) {
 			const a = i * Math.PI / 2.5;
 			const d = ring.r / 2 + Math.random() * ring.r / 2;
-			const art = clip("snakePart");
-			art.gotoAndStop(this.elementIndex);
-			this.scales.push({ x: ring.x + Math.cos(a) * d, y: ring.y + Math.sin(a) * d, a, rot: Math.random() * TAU, size: 3, art });
+			this.scales.push({ x: ring.x + Math.cos(a) * d, y: ring.y + Math.sin(a) * d, a, rot: Math.random() * TAU, size: 3 });
 		}
 		this.parts.splice(1, 1);
 		this.resizeRings();
@@ -432,9 +415,6 @@ export class Snake extends Boss {
 	// ----- drawing -----
 
 	render(ctx) {
-		const head = this.parts[0].art;
-		for (const eye of ["o1", "o2"])
-			head.child(eye)?.gotoAndStop(this.eyes);
 		// from the tail to the head, so that the head is on top
 		for (let i = this.parts.length - 1; i >= 0; i--) {
 			const p = this.parts[i];
@@ -445,7 +425,8 @@ export class Snake extends Boss {
 			// the symbol faces left
 			ctx.rotate(p.angle + Math.PI + p.spin);
 			ctx.scale(p.scale, p.scale);
-			p.art.draw(ctx);
+			const kind = i === 0 ? "head" : i === this.parts.length - 1 ? "tail" : "ring";
+			drawSnakePart(ctx, kind, this.elementIndex, this.eyes, i === 0 ? this.bite / 0.25 : 0);
 			ctx.restore();
 		}
 		for (const s of this.scales) {
@@ -453,7 +434,7 @@ export class Snake extends Boss {
 			ctx.translate(s.x, s.y);
 			ctx.rotate(s.rot);
 			ctx.scale(s.size, s.size);
-			s.art.draw(ctx);
+			drawScale(ctx, this.elementIndex);
 			ctx.restore();
 		}
 	}
@@ -461,15 +442,14 @@ export class Snake extends Boss {
 
 /** The logo of the element, on the floor of the boss room. */
 class ElementLogo extends Entity {
-	declare art: any;
+	declare element: number;
 	declare alpha: number;
 
 
-	/** ("logoBg" : a frame per element, placed by the symbol itself) */
+	/** A faint emblem of the element, in the middle of the room. */
 	constructor(element) {
 		super(0, 0, Layer.FLOOR);
-		this.art = clip("logoBg");
-		this.art.gotoAndStop(element);
+		this.element = element;
 		this.alpha = 0;
 	}
 
@@ -478,8 +458,9 @@ class ElementLogo extends Entity {
 	}
 
 	render(ctx) {
-		ctx.globalAlpha = this.alpha;
-		this.art.draw(ctx);
-		ctx.globalAlpha = 1;
+		ctx.save();
+		ctx.globalAlpha *= this.alpha;
+		drawElementLogo(ctx, W / 2, H / 2, this.element);
+		ctx.restore();
 	}
 }

@@ -26,7 +26,7 @@ export class Loop {
 
 	/**
 	 * @param {(dt: number) => void} update  one simulation step
-	 * @param {() => void} render            draws the current state
+	 * @param {(alpha: number) => void} render  draws the current state, `alpha` between the last two steps
 	 */
 	constructor(update, render) {
 		this.update = update;
@@ -65,7 +65,9 @@ export class Loop {
 		if (steps === MAX_STEPS)
 			this.accumulated = 0;
 
-		this.render();
+		// how far we are between the last two steps (0..1): drawing interpolates
+		// moving things, so motion is smooth at 60, 120 or 240 Hz
+		this.render(this.accumulated / STEP);
 		requestAnimationFrame(this.frame);
 	}
 }

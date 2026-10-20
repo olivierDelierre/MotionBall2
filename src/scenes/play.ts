@@ -4,22 +4,18 @@
  * and "pause" (Pause.as), "panGameOver" (GameOver.as, GameOverCourse.as).
  */
 
-import { WIDTH as W, HEIGHT as H } from "../config.js";
+import { WIDTH as W, VIEW_HEIGHT as H } from "../config.js";
 import { Mode } from "../data/enums.js";
 import { Game } from "../game/game.js";
-import { button, Pop } from "../gfx/ui.js";
+import { button, panel, Pop } from "../gfx/ui.js";
 import { text, circle } from "../gfx/draw.js";
-import { clip } from "../gfx/xfl/index.js";
-import { withColor } from "../gfx/xfl/render.js";
+import { COLOR, BALL_PALETTE, roundedRect, circlePath, sphere } from "../gfx/theme.js";
 import { formatTime } from "../engine/math.js";
 import { MUSIC_VOLUME } from "../sounds.js";
 import { app } from "../app.js";
 import { ButtonGroup } from "./widgets.js";
 import { drawMap } from "./map_view.js";
 import { MenuScene } from "./menu.js";
-
-/** The colour of the game during the pause (original : Pause.as). */
-const PAUSE_COLOR = { am: 1, rm: 0.5, gm: 0.7, bm: 0.5, ao: 0, ro: 30, go: 0, bo: 30 };
 
 export class PlayScene {
 	declare mode: any;
@@ -53,14 +49,14 @@ export class PlayScene {
 			return;
 		const withMap = this.game.inventory.map || this.game.inventory.radar;
 		// (for the touch screens and the gamepads : the original only had Escape)
-		const y = 393;
+		const y = H - 40;
 		const buttons = [
-			{ x: 70, y, w: 120, h: 28, action: () => this.resume(),
-				draw: (ctx, f) => button(ctx, "Continuer", 70, y, 120, 28, f ? "focus" : "idle") },
-			{ x: 200, y, w: 120, h: 28, action: () => this.quit(),
-				draw: (ctx, f) => button(ctx, "Abandonner", 200, y, 120, 28, f ? "focus" : "idle") }
+			{ x: W / 2 - 80, y, w: 140, h: 34, action: () => this.resume(),
+				draw: (ctx, f) => button(ctx, "Continuer", W / 2 - 80, y, 140, 34, f ? "focus" : "idle") },
+			{ x: W / 2 + 80, y, w: 140, h: 34, action: () => this.quit(),
+				draw: (ctx, f) => button(ctx, "Abandonner", W / 2 + 80, y, 140, 34, f ? "focus" : "idle") }
 		];
-		this.paused = { group: new ButtonGroup(buttons, () => this.resume()), withMap, time: 0, art: clip("pause") };
+		this.paused = { group: new ButtonGroup(buttons, () => this.resume()), withMap, time: 0 };
 		if (this.game.boss && this.game.boss.onPause)
 			this.game.boss.onPause(true);
 	}
@@ -134,46 +130,9 @@ export class PlayScene {
 		}
 		if (app.achievements)
 			app.achievements.event("end", this.game, { ...result, courseRank });
-		this.ending = { heading, lines, table, pop: new Pop(), scale: 0, time: 0, art: this.endPanel(win, lines, table) };
+		this.ending = { heading, lines, table, win, pop: new Pop(), scale: 0, time: 0 };
 		if (win)
 			app.audio.playMusic("musicMenu", MUSIC_VOLUME);
-	}
-
-	/**
-	 * "panGameOver" : "victory" or "gameOver", the lines in "mainField" ;
-	 * the records of a course ("records" : a slot per time, its balls
-	 * showing whose time it is).
-	 */
-	endPanel(win, lines, table) {
-		const art = clip("panGameOver");
-		if (table) {
-			art.gotoAndStop("records");
-			let cpu = 0;
-			for (let i = 0; i < 4; i++) {
-				const slot = art.child("s" + (i + 1));
-				const row = table[i];
-				if (!slot)
-					continue;
-				if (!row) {
-					art.set("s" + (i + 1), { visible: false });
-					continue;
-				}
-				slot.setText("time_text", formatTime(row.time, true));
-				// (original : the CPU's times 1-3, the player's new one 4, another 5)
-				const type = row.cpu ? ++cpu : row.mine ? 4 : 5;
-				slot.child("b1")?.gotoAndStop(type - 1);
-				slot.child("b2")?.gotoAndStop(type - 1);
-			}
-			// (one line under the times : a new circuit, or the record)
-			art.setText("mainField", lines[lines.length - 1]);
-			art.set("mainField", { y: 121 });
-		} else {
-			art.gotoAndStop(win ? "victory" : "gameOver");
-			art.setText("mainField", lines.join("\n"));
-			// (original : centred on y = 30)
-			art.set("mainField", { y: 30 - lines.length * 32 / 2 });
-		}
-		return art;
 	}
 
 	// ----- every step -----
@@ -215,10 +174,7 @@ export class PlayScene {
 	render(ctx) {
 		if (!this.game)
 			return;
-		if (this.paused)
-			withColor(ctx, PAUSE_COLOR, c => this.game.render(c));
-		else
-			this.game.render(ctx);
+		this.game.render(ctx);
 		this.renderStick(ctx);
 		if (this.paused)
 			this.renderPause(ctx);
@@ -231,35 +187,63 @@ export class PlayScene {
 		const s = app.input.stick;
 		if (!s || this.paused || this.ending)
 			return;
-		ctx.fillStyle = "rgba(255,255,255,0.15)";
+		ctx.fillStyle = "rgba(30,21,69,0.12)";
 		circle(ctx, s.x0, s.y0, 40);
 		ctx.fill();
 		const dx = s.x - s.x0;
 		const dy = s.y - s.y0;
 		const k = Math.min(1, 40 / (Math.hypot(dx, dy) || 1));
-		ctx.fillStyle = "rgba(255,255,255,0.35)";
+		ctx.fillStyle = "rgba(95,203,43,0.6)";
 		circle(ctx, s.x0 + dx * k, s.y0 + dy * k, 16);
 		ctx.fill();
 	}
 
 	renderPause(ctx) {
 		const p = this.paused;
+		ctx.fillStyle = "rgba(30,21,69,0.55)";
+		ctx.fillRect(0, 0, W, H);
 		if (p.withMap)
 			drawMap(ctx, this.game);
-		p.art.draw(ctx);
+		else
+			text(ctx, "Pause", W / 2, H / 2 - 20, { size: 40, color: "#FFFFFF", weight: "800" });
 		p.group.render(ctx);
 	}
 
 	renderEnd(ctx) {
 		const e = this.ending;
+		ctx.fillStyle = "rgba(30,21,69,0.45)";
+		ctx.fillRect(0, 0, W, H);
+		const w = 380, h = e.table ? 300 : 120 + e.lines.length * 26 + 20;
 		ctx.save();
 		ctx.translate(W / 2, H / 2);
-		ctx.scale(e.scale, e.scale);
-		e.art.draw(ctx);
+		ctx.scale(Math.max(0.01, e.scale), Math.max(0.01, e.scale));
+		panel(ctx, -w / 2, -h / 2, w, h, 24);
+		text(ctx, e.heading, 0, -h / 2 + 44, { size: 32, color: e.win ? COLOR.green : COLOR.magenta, weight: "800" });
+		if (e.table) {
+			let cpu = 0;
+			e.table.forEach((row, i) => {
+				const y = -h / 2 + 96 + i * 34;
+				if (row.mine) {
+					roundedRect(ctx, -w / 2 + 24, y - 15, w - 48, 30, 15);
+					ctx.fillStyle = "rgba(95,203,43,0.18)";
+					ctx.fill();
+				}
+				const type = row.cpu ? cpu++ : row.mine ? 1 : 3;
+				const c = BALL_PALETTE[type];
+				ctx.fillStyle = sphere(ctx, -w / 2 + 52, y, 9, [c[2], c[0], c[1]]);
+				circlePath(ctx, -w / 2 + 52, y, 9);
+				ctx.fill();
+				text(ctx, String(i + 1), -w / 2 + 80, y, { size: 15, color: COLOR.muted, weight: "600" });
+				text(ctx, formatTime(row.time, true), w / 2 - 40, y, { size: 18, color: COLOR.ink, align: "right", weight: "700" });
+			});
+			text(ctx, e.lines[e.lines.length - 1], 0, h / 2 - 34, { size: 15, color: COLOR.muted, weight: "600" });
+		} else {
+			e.lines.forEach((line, i) => text(ctx, line, 0, -h / 2 + 90 + i * 26, { size: 16, color: i === 0 ? COLOR.ink : COLOR.muted, weight: i === 0 ? "700" : "500" }));
+		}
 		ctx.restore();
 		if (e.time > 0.8) {
 			ctx.globalAlpha = 0.6 + 0.4 * Math.sin(e.time * 4);
-			text(ctx, "Clique ou appuie sur une touche", W / 2, H - 14, { size: 13, color: "#fff", outline: "#4a1470" });
+			text(ctx, "Clique ou appuie sur une touche", W / 2, H - 22, { size: 14, color: "#FFFFFF", weight: "600" });
 			ctx.globalAlpha = 1;
 		}
 	}

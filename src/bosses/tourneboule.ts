@@ -18,12 +18,12 @@
 
 import { WIDTH as W, HEIGHT as H, TILE, TILE_ORIGIN, TILES_X, TILES_Y } from "../config.js";
 import { BallType, Item } from "../data/enums.js";
-import { Boss, CrackingTile, breakFloor, redOffset } from "./common.js";
+import { Boss, CrackingTile, breakFloor } from "./common.js";
 import { Water, Fire, Earth, Wind } from "./powers.js";
 import { Layer } from "../game/entity.js";
-import { ClipEffect } from "../game/entities/effects.js";
+import { Puff } from "../game/entities/effects.js";
 import { dist, decay, randInt } from "../engine/math.js";
-import { clip } from "../gfx/xfl/index.js";
+import { drawTourneboule, drawTBShadow } from "../gfx/tourneboule_art.js";
 import { app } from "../app.js";
 
 const HITS_TO_GROUND = 4;
@@ -43,9 +43,8 @@ export class Tourneboule extends Boss {
 	declare holesMade: number;
 	declare blocksMade: number;
 	declare previousKata: number;
-	declare art: any;
-	declare shade: any;
-	declare bubble: any;
+	declare spin: number;
+	declare squash: number;
 	declare state: any;
 	declare ball: any;
 	declare dead: boolean;
@@ -67,26 +66,14 @@ export class Tourneboule extends Boss {
 		this.blocksMade = 0;
 		this.previousKata = -1;
 
-		this.art = clip("tourneboule");
-		this.shade = clip("TBShadow");
-		this.bubble = clip("forceBubble");
-		this.art.on = event => this.onArt(event);
+		this.spin = 0;
+		this.squash = 1;
 		this.land();
 	}
 
 	/** Changes state ; `data` gives the fields of the new state. */
 	set(name, data = {}) {
 		this.state = { name, time: 0, ...data };
-	}
-
-	/** Plays a label on the boss and its shadow. */
-	anim(label, stop = false) {
-		for (const c of [this.art, this.shade]) {
-			if (stop)
-				c.gotoAndStop(label);
-			else
-				c.gotoAndPlay(label);
-		}
 	}
 
 	angleToBall() {
@@ -111,44 +98,49 @@ export class Tourneboule extends Boss {
 		if (s.name === "wait" || s.name === "kata")
 			this.collide(dt, game);
 
-		// (the animation calls kataDone / animDone, see onArt)
-		this.art.update(dt);
-		this.shade.update(dt);
+		this.updateTimeline(dt, game);
+		this.updatePose(dt);
 	}
 
-	/** The calls of the animation. */
-	onArt(event) {
-		const game = this.game;
+	/**
+	 * What the original symbol's animation called back (frame scripts at 40
+	 * frames per second): in a kata the power is cast a few frames in
+	 * ("kataDone") and the kata ends later ("animDone").
+	 */
+	updateTimeline(dt, game) {
 		const s = this.state;
-		if (event === "kataDone") {
-			if (s.name === "kata" && s.left === 0 && !s.cast) {
+		switch (s.name) {
+		case "land":
+			if (s.time >= 7 / 40)
+				this.startWait();
+			break;
+		case "kata":
+			if (!s.cast && s.left === 0 && s.time >= KATA_TIMES[s.kata][0] / 40) {
 				s.cast = true;
 				this.cast(s.power, game);
 			}
-			return;
-		}
-		if (event !== "animDone")
-			return;
-		switch (s.name) {
-		case "land":
-			this.startWait();
-			break;
-		case "kata":
-			this.kataEnd(game);
+			if (s.time >= KATA_TIMES[s.kata][1] / 40)
+				this.kataEnd(game);
 			break;
 		case "takeoff":
 		case "fly":
-			if (s.loops-- <= 0) {
-				this.vanish(game);
-			} else {
-				this.state.name = "fly";
-				this.anim("fly");
+			if (s.time >= (s.name === "takeoff" ? 16 : 12) / 40) {
+				if (s.loops-- <= 0) {
+					this.vanish(game);
+				} else {
+					s.name = "fly";
+					s.time = 0;
+				}
+			}
+			break;
+		case "appear":
+			if (s.time >= 5 / 40) {
+				app.audio.play("hide");
+				this.land();
 			}
 			break;
 		case "death":
-			if (!this.dead) {
-				this.art.stop();
-				this.shade.stop();
+			if (s.time >= 36 / 40 && !this.dead) {
 				this.dead = true;
 				game.bossBeaten();
 			}
@@ -156,16 +148,24 @@ export class Tourneboule extends Boss {
 		}
 	}
 
+	/** How the ball is posed: how fast it spins, flying, squashed before a kata. */
+	updatePose(dt) {
+		const s = this.state;
+		const rate = s.name === "kata" ? 14 : s.name === "takeoff" || s.name === "fly" || s.name === "hidden" ? 20
+			: s.name === "death" ? 30 : 2.5;
+		this.spin += rate * dt;
+		const target = s.name === "kata" && s.time < 0.12 ? 0.82 : 1;
+		this.squash += (target - this.squash) * Math.min(1, dt * 20);
+	}
+
 	land() {
 		this.speed = 0;
 		this.alpha = 1;
-		this.anim("stopFly");
 		this.set("land");
 	}
 
 	startWait() {
 		this.shield = true;
-		this.anim(0, true);
 		this.set("wait", { duration: [0.5, 0.2, 0.1][this.hits] || 0 });
 	}
 
@@ -204,7 +204,6 @@ export class Tourneboule extends Boss {
 		this.previousKata = kata;
 		app.audio.play(left === 0 ? "kata3" : "kata" + (1 + randInt(3)));
 		this.set("kata", { kata, power, left, cast: false });
-		this.anim("kata" + (kata + 1));
 	}
 
 	/** The end of a kata's animation. */
@@ -220,7 +219,6 @@ export class Tourneboule extends Boss {
 			this.hits++;
 			this.startKatas(game);
 		} else {
-			this.anim("startFly");
 			this.set("takeoff", { loops: 3 });
 		}
 	}
@@ -228,8 +226,7 @@ export class Tourneboule extends Boss {
 	/** Flies invisibly to a place more than 200 pixels away. */
 	vanish(game) {
 		app.audio.play("hide");
-		game.room.add(new ClipEffect("TBVanish", this.x, this.y, Layer.BOSS));
-		this.anim("flyVanish");
+		game.room.add(new Puff(this.x, this.y));
 		let tx;
 		let ty;
 		do {
@@ -257,19 +254,9 @@ export class Tourneboule extends Boss {
 			? Math.min(1, 2000 / Math.max(1, (ball.x - this.x) ** 2 + (ball.y - this.y) ** 2))
 			: 0;
 
-		// arrived : waits for the right moment of the flight loop to appear
-		const f = this.art.frame - this.art.frameOf("flyVanish");
-		if (step >= d && f >= 2 && f <= 10) {
-			this.art.stop();
-			this.shade.stop();
-			const spawn = new ClipEffect("TBSpawn", this.x, this.y, Layer.BOSS);
-			spawn.art.on = event => {
-				if (event === "animDone" && this.state.name === "appear") {
-					app.audio.play("hide");
-					this.land();
-				}
-			};
-			game.room.add(spawn);
+		// arrived: a puff of smoke, then it lands again
+		if (step >= d) {
+			game.room.add(new Puff(this.x, this.y));
 			this.set("appear");
 		}
 	}
@@ -387,7 +374,6 @@ export class Tourneboule extends Boss {
 	}
 
 	die(game) {
-		this.anim("death");
 		this.set("death");
 		this.powers.forEach(p => p.destroy());
 		game.invincible = true;
@@ -400,28 +386,33 @@ export class Tourneboule extends Boss {
 			return;
 		ctx.save();
 		ctx.globalAlpha *= this.alpha;
-		ctx.translate(this.x, this.y);
-		this.shade.draw(ctx);
+		drawTBShadow(ctx, this.drawX, this.drawY, this.lift);
 		ctx.restore();
 	}
 
+	/** 0 on the floor, 1 flying. */
+	get lift() {
+		const n = this.state.name;
+		return n === "takeoff" || n === "fly" || n === "hidden" ? 1 : n === "land" ? Math.max(0, 1 - this.state.time / 0.175) : 0;
+	}
+
 	render(ctx) {
+		if (this.alpha <= 0.01)
+			return;
 		ctx.save();
-		ctx.translate(this.x, this.y);
-		if (this.alpha > 0.01) {
-			ctx.globalAlpha *= this.alpha;
+		ctx.globalAlpha *= this.alpha;
+		drawTourneboule(ctx, this.drawX, this.drawY, {
+			spin: this.spin, lift: this.lift, squash: this.squash,
 			// (original : red offset = hurt time x 300)
-			this.art.draw(ctx, this.hurt > 0 ? redOffset(this.hurt * 300) : null);
-			ctx.globalAlpha = 1;
-		}
-		// the shield, when it pops
-		if (this.shieldFlash > 0) {
-			ctx.globalAlpha = this.shieldFlash;
-			this.bubble.draw(ctx);
-		}
+			red: Math.min(1, this.hurt * 1.2), shield: this.shield, shieldFlash: this.shieldFlash,
+			death: this.state.name === "death" ? Math.min(1, this.state.time / 0.9) : 0, time: app.time
+		});
 		ctx.restore();
 	}
 }
+
+/** Per kata: when the power is cast, and when the kata ends (frames at 40 per second). */
+const KATA_TIMES = [[6, 16], [6, 15], [10, 18], [10, 18], [10, 19], [9, 18]];
 
 /** Tile of a position. */
 function tileOf(x, y) {

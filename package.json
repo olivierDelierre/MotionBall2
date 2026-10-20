@@ -2,27 +2,31 @@
   "name": "motionball2-rewrite",
   "version": "1.0.0",
   "private": true,
-  "description": "MotionBall 2 (Motion Twin / Frutiparc, 2005) rewritten in modern HTML5 / JavaScript.",
+  "description": "MotionBall 2 (Motion Twin / Frutiparc, 2005) rewritten in TypeScript for modern browsers.",
   "type": "module",
   "scripts": {
-    "build": "esbuild src/main.js --bundle --format=iife --target=es2020 --outfile=dist/motionball2.js",
-    "watch": "esbuild src/main.js --bundle --format=iife --target=es2020 --sourcemap --outfile=dist/motionball2.js --watch",
-    "serve": "esbuild src/main.js --bundle --format=iife --target=es2020 --sourcemap --outfile=dist/motionball2.js --servedir=. --serve=8000",
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write src tests",
     "levels": "node tools/build_levels.js",
-    "test": "node --test tests/*.test.js",
-    "test:browser": "node tests/browser/smoke.js",
-    "xfl": "node tools/xfl/convert.js",
-    "gallery": "esbuild tools/xfl/gallery.js --bundle --format=iife --target=es2020 --outfile=dist/gallery.js"
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:browser": "node tests/browser/smoke.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@types/node": "^26.6.5",
-    "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "prettier": "^3.9.10",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.72.0",
     "vite": "^7.3.7",
     "vitest": "^3.2.7"
+  },
+  "dependencies": {
+    "@fontsource-variable/outfit": "^5.3.0"
   }
 }

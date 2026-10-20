@@ -16,7 +16,7 @@
 
 import { WIDTH as W, HEIGHT as H, BORDER as B, DOOR_SIZE as D } from "../config.js";
 import { BOUNCE } from "./physics.js";
-import { clip, drawClip } from "../gfx/xfl/index.js";
+import { COLOR, FONT, roundedRect } from "../gfx/theme.js";
 import { app } from "../app.js";
 import { Spark } from "./entities/effects.js";
 
@@ -80,8 +80,7 @@ export class Door {
 	declare shape: any;
 	declare bounce: any;
 	declare closeWhenInside: boolean;
-	declare clip: any;
-
+	
 
 	constructor(dir, state) {
 		this.dir = dir;
@@ -148,41 +147,123 @@ export class Door {
 	}
 
 	/**
-	 * The original "door" symbol : frames "off" (closed), "open" .. "opened"
-	 * (the opening), "nodoor0".."nodoor3" (no door : a piece of border). The
-	 * opening and closing follow `progress`.
+	 * Drawn in the frame of its side (+y toward the room, the floor edge at
+	 * y = B / 2): a magenta barrier with a counter of the orbs taken while it
+	 * is closed, a green glow and an arrow once it is open.
 	 */
-	render(ctx) {
-		const c = this.clip || (this.clip = makeDoorClip());
+	render(ctx, room) {
 		if (this.state === "wall" || this.state === "hidden")
-			c.gotoAndStop("nodoor" + this.dir);
-		else if (this.progress <= 0)
-			c.gotoAndStop("off");
-		else
-			c.gotoAndStop(Math.min(c.frameOf("opened"), c.frameOf("open") + Math.floor(this.progress * OPEN_FRAMES)));
+			return;
 		const f = DOOR_FRAMES[this.dir];
-		drawClip(ctx, c, f.x, f.y, f.angle);
+		const p = this.progress;
+		ctx.save();
+		ctx.translate(f.x, f.y);
+		ctx.rotate(f.angle);
+		const y = B / 2;
+
+		if (p > 0) {
+			// the way through: a soft green light and an arrow pointing outwards
+			const g = ctx.createRadialGradient(0, y, 0, 0, y, D * 0.55);
+			g.addColorStop(0, "rgba(95,203,43,0.4)");
+			g.addColorStop(1, "rgba(95,203,43,0)");
+			ctx.globalAlpha = p;
+			ctx.fillStyle = g;
+			ctx.fillRect(-D * 0.6, y - 40, D * 1.2, 80);
+			ctx.strokeStyle = COLOR.green;
+			ctx.lineWidth = 3.5;
+			ctx.lineCap = "round";
+			ctx.lineJoin = "round";
+			ctx.beginPath();
+			ctx.moveTo(-8, y - 3);
+			ctx.lineTo(0, y - 13);
+			ctx.lineTo(8, y - 3);
+			ctx.stroke();
+			ctx.globalAlpha = 1;
+		}
+
+		if (p < 1) {
+			const w = D * (1 - p);
+			const locked = this.state === "locked";
+			const g = ctx.createLinearGradient(-w / 2, 0, w / 2, 0);
+			if (locked) {
+				g.addColorStop(0, "#8F82C9");
+				g.addColorStop(1, "#6B4BDB");
+			} else {
+				g.addColorStop(0, COLOR.magenta);
+				g.addColorStop(1, COLOR.amber);
+			}
+			ctx.save();
+			ctx.shadowColor = locked ? "rgba(107,75,219,0.5)" : "rgba(255,46,126,0.7)";
+			ctx.shadowBlur = 14;
+			ctx.fillStyle = g;
+			roundedRect(ctx, -w / 2, y - 4.5, w, 9, 4.5);
+			ctx.fill();
+			ctx.restore();
+			if (this.state === "closed" && room && room.redsTotal > 0 && room.redsLeft > 0)
+				orbCounter(ctx, y + 22, room.redsTotal - room.redsLeft, room.redsTotal);
+		}
+		ctx.restore();
 	}
 }
 
-/** Frames of the opening animation of the "door" symbol. */
-const OPEN_FRAMES = 12;
-
-function makeDoorClip() {
-	const c = clip("door");
-	c.stop();
-	// its two sliding halves only move with the frames of the door
-	for (const name of ["porteA", "porteB"]) {
-		const half = c.child(name);
-		if (half)
-			half.stop();
-	}
-	return c;
+/** The pill showing a padlock and how many orbs are taken: "2/6". */
+function orbCounter(ctx: CanvasRenderingContext2D, y: number, taken: number, total: number): void {
+	const w = 58, h = 24;
+	ctx.save();
+	ctx.translate(0, y);
+	ctx.shadowColor = "rgba(60,40,140,0.25)";
+	ctx.shadowBlur = 8;
+	roundedRect(ctx, -w / 2, -h / 2, w, h, h / 2);
+	ctx.fillStyle = "rgba(255,255,255,0.95)";
+	ctx.fill();
+	ctx.shadowBlur = 0;
+	ctx.strokeStyle = "rgba(180,83,9,0.45)";
+	ctx.lineWidth = 1;
+	ctx.stroke();
+	// the padlock
+	ctx.fillStyle = COLOR.amberInk;
+	roundedRect(ctx, -w / 2 + 11, -2, 10, 8, 2);
+	ctx.fill();
+	ctx.strokeStyle = COLOR.amberInk;
+	ctx.lineWidth = 1.6;
+	ctx.beginPath();
+	ctx.arc(-w / 2 + 16, -2, 3, Math.PI, 0);
+	ctx.stroke();
+	ctx.font = `700 13px ${FONT}`;
+	ctx.textAlign = "left";
+	ctx.textBaseline = "middle";
+	ctx.fillStyle = COLOR.amberInk;
+	ctx.fillText(taken + "/" + total, -w / 2 + 26, 1);
+	ctx.restore();
 }
 
-let border = null;
-
-/** The border of the room (the original "border" symbol, with openings at the doors). */
-export function drawBorder(ctx) {
-	drawClip(ctx, border || (border = clip("border")), 0, 0);
+/**
+ * The outline of the floor: a green rounded line, interrupted where a door
+ * is open. (The floor itself is drawn by the room.)
+ */
+export function drawBorder(ctx, doors = []) {
+	ctx.save();
+	ctx.beginPath();
+	ctx.rect(-50, -50, W + 100, H + 100);
+	for (const door of doors) {
+		if (door.progress <= 0)
+			continue;
+		const f = DOOR_FRAMES[door.dir];
+		const w = D * door.progress;
+		// (a rectangle across the outline, in the frame of the door)
+		const c = Math.cos(f.angle), s = Math.sin(f.angle);
+		const pt = (lx, ly) => [f.x + lx * c - ly * s, f.y + lx * s + ly * c];
+		const [a, b, d, e] = [pt(-w / 2, B / 2 - 6), pt(w / 2, B / 2 - 6), pt(w / 2, B / 2 + 6), pt(-w / 2, B / 2 + 6)];
+		ctx.moveTo(a[0], a[1]);
+		ctx.lineTo(b[0], b[1]);
+		ctx.lineTo(d[0], d[1]);
+		ctx.lineTo(e[0], e[1]);
+		ctx.closePath();
+	}
+	ctx.clip("evenodd");
+	roundedRect(ctx, B, B, W - 2 * B, H - 2 * B, CORNER);
+	ctx.strokeStyle = COLOR.green;
+	ctx.lineWidth = 3;
+	ctx.stroke();
+	ctx.restore();
 }

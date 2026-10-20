@@ -9,8 +9,8 @@
  */
 
 import { WIDTH as W, HEIGHT as H, TILE, TILE_ORIGIN, BORDER } from "../config.js";
-import { Entity, Layer } from "../game/entity.js";
-import { ClipEffect } from "../game/entities/effects.js";
+import { Entity, Layer, Effect } from "../game/entity.js";
+import { roundedRect } from "../gfx/theme.js";
 
 export class Boss extends Entity {
 
@@ -21,33 +21,48 @@ export class Boss extends Entity {
 	onPause() { }
 }
 
-// ----- red flash -----
-
-/** The colour transform of a hurt boss : a red offset (0..255). */
-export const redOffset = red => ({ am: 1, rm: 1, gm: 1, bm: 1, ao: 0, ro: Math.min(255, red), go: 0, bo: 0 });
-
 // ----- new holes -----
 
-/** A floor tile falling into a new hole ("dalle", it removes itself). */
-export class FallingTile extends ClipEffect {
+/** A floor tile falling into a new hole: it shrinks and fades. */
+export class FallingTile extends Effect {
+	declare left: number;
+	declare top: number;
 
 	constructor(tx, ty) {
-		super("dalle", TILE_ORIGIN + tx * TILE, TILE_ORIGIN + ty * TILE, Layer.ITEM, 1);
+		super(TILE_ORIGIN + tx * TILE, TILE_ORIGIN + ty * TILE, 0.6, Layer.ITEM);
+		this.left = this.x;
+		this.top = this.y;
+	}
+
+	render(ctx) {
+		const t = this.t;
+		const s = 1 - t * 0.6;
+		ctx.save();
+		ctx.globalAlpha *= 1 - t;
+		ctx.translate(this.left + TILE / 2, this.top + TILE / 2 + t * 18);
+		ctx.scale(s, s);
+		roundedRect(ctx, -TILE / 2, -TILE / 2, TILE, TILE, 6);
+		ctx.fillStyle = "#AD99E6";
+		ctx.fill();
+		ctx.restore();
 	}
 }
 
 /**
- * The floor cracking ("FXDalleCut") : when its animation ends, the tile falls
- * and becomes a hole (`onDone`).
+ * The floor cracking: when it is over, the tile falls and becomes a hole
+ * (`onDone`).
  */
-export class CrackingTile extends ClipEffect {
+export class CrackingTile extends Effect {
 	declare tx: any;
 	declare ty: any;
 	declare onDone: any;
-
+	declare left: number;
+	declare top: number;
 
 	constructor(tx, ty, onDone) {
-		super("FXDalleCut", TILE_ORIGIN + tx * TILE, TILE_ORIGIN + ty * TILE, Layer.FLOOR);
+		super(TILE_ORIGIN + tx * TILE, TILE_ORIGIN + ty * TILE, 1.2, Layer.FLOOR);
+		this.left = this.x;
+		this.top = this.y;
 		this.tx = tx;
 		this.ty = ty;
 		this.onDone = onDone;
@@ -57,6 +72,20 @@ export class CrackingTile extends ClipEffect {
 		super.update(dt);
 		if (this.dead)
 			this.onDone(game, this.tx, this.ty);
+	}
+
+	render(ctx) {
+		const shake = Math.sin(this.age * 90) * this.t * 1.5;
+		ctx.save();
+		ctx.translate(this.left + shake, this.top);
+		ctx.strokeStyle = `rgba(75,47,181,${0.3 + this.t * 0.6})`;
+		ctx.lineWidth = 2;
+		ctx.lineCap = "round";
+		ctx.beginPath();
+		ctx.moveTo(4, 6); ctx.lineTo(18, 16); ctx.lineTo(14, 26); ctx.lineTo(30, 36);
+		ctx.moveTo(36, 4); ctx.lineTo(24, 14); ctx.lineTo(18, 16);
+		ctx.stroke();
+		ctx.restore();
 	}
 }
 

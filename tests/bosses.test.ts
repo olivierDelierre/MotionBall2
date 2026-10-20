@@ -42,10 +42,12 @@ test("each dungeon has its boss ; the doors close behind the ball", () => {
 // ----- octopus -----
 
 test("octopus : sending its eye back hurts it", () => {
-	setup(3);
+	setup(5);
 	const g = bossGame(Mode.CHALLENGE);
 	const o = g.boss;
-	runUntil(g, g => g.boss.eye, 60);
+	for (let i = 0; i < 60 * 120 && !o.eye; i++)
+		run(g, STEP, invulnerable);
+	assert.ok(o.eye, "it throws its eye");
 	// let it fly away from the octopus, then the ball meets it head on
 	run(g, 0.3, invulnerable);
 	const eye = o.eye;

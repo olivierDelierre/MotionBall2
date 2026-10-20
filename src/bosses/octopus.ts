@@ -15,8 +15,8 @@
  */
 
 import { WIDTH as W, HEIGHT as H, TILES_X, TILES_Y } from "../config.js";
-import { Boss, breakFloor, ARENA, redOffset } from "./common.js";
-import { clip, drawClip } from "../gfx/xfl/index.js";
+import { Boss, breakFloor, ARENA } from "./common.js";
+import { drawOctopus, drawOctopusShadow, drawThrownEye, drawBlob } from "../gfx/octopus_art.js";
 import { angleDiff, dist2, decay, randInt, TAU } from "../engine/math.js";
 import { app } from "../app.js";
 
@@ -36,11 +36,10 @@ export class Octopus extends Boss {
 	declare pincers: any;
 	declare suction: any;
 	declare particles: any;
-	declare art: any;
+	declare blink: number;
 	declare x: any;
 	declare y: any;
 	declare dead: boolean;
-	declare eyeArt: any;
 
 
 	constructor(game) {
@@ -61,39 +60,22 @@ export class Octopus extends Boss {
 		this.pincers = 0;           // opening angle, degrees
 		this.suction = 0;           // size of the suction effect
 		this.particles = null;
-		this.art = clip("boss");
-		this.art.gotoAndStop("dodo");
+		this.blink = 0;             // 0..1, the eyelid
 
 		game.ball.speedLimit = false;
 		app.audio.play("bossDeath");
 	}
 
-	/**
-	 * The animations of the "boss" symbol (Boss.as) : sleep = "dodo",
-	 * suck = "aspire" (loops), eat, spit = "throw", eyeless = "looseEye",
-	 * newEye, death ; the others show "normal".
-	 */
+	/** Changes the pose: sleep, normal, suck, eat, spit, eyeless, newEye, death. */
 	play(anim) {
 		this.anim = { name: anim, time: 0 };
-		const a = this.art;
-		switch (anim) {
-		case "sleep": a.gotoAndStop("dodo"); break;
-		case "suck": a.gotoAndPlay("aspire"); break;
-		case "eat": a.gotoAndPlay("eat"); break;
-		case "spit": a.gotoAndPlay("throw"); break;
-		case "eyeless": a.gotoAndPlay("looseEye"); break;
-		case "newEye": a.gotoAndPlay("newEye"); break;
-		case "death": a.gotoAndPlay("death"); break;
-		default:
-			a.gotoAndStop("normal");
-		}
 	}
 
 	// ----- every step -----
 
 	update(dt, game) {
 		this.anim.time += dt;
-		this.updateArt(dt);
+		this.updatePose(dt);
 		this.alpha = Math.min(1, this.alpha + dt * 4);
 		this.lookAt(game.ball, dt);
 
@@ -140,9 +122,7 @@ export class Octopus extends Boss {
 		this.collide(dt, game);
 		if (s.name === "sleep" && s.time <= 3 * U && this.anim.name === "sleep") {
 			this.play("normal");
-			const eye = this.art.child("oeil");
-			if (eye)
-				eye.gotoAndPlay("close");
+			this.blink = 1;
 		}
 		if (s.time <= 0)
 			s.then === "attack" ? this.nextPattern(game) : s.then(game);
@@ -438,62 +418,43 @@ export class Octopus extends Boss {
 		const k = decay(0.9, dt);
 		this.pupil.x = this.pupil.x * k + x * (1 - k);
 		this.pupil.y = this.pupil.y * k + y * (1 - k);
-		// (original : 1 chance in 40 per frame)
-		if (this.anim.name !== "sleep" && Math.random() < dt) {
-			const eye = this.art.child("oeil");
-			if (eye)
-				eye.play();
-		}
+		// random blinks (original : 1 chance in 40 per frame)
+		if (this.anim.name !== "sleep" && this.blink <= 0 && Math.random() < dt)
+			this.blink = 1;
 	}
 
-	/** Moves the parts of the symbol that the code drives (Boss.as). */
-	updateArt(dt) {
-		const a = this.art;
-		a.update(dt);
-		a.set("p1", { rotation: this.pincers });
-		a.set("p2", { rotation: -this.pincers });
-		a.set("souffle", { xscale: this.suction, yscale: this.suction });
-		const p = this.pupil;
-		a.set("p", { x: p.x, y: p.y, xscale: 1 - Math.abs(p.x) / 100, yscale: 1 - Math.abs(p.y) * 1.5 / 100 });
-		// the body stretches with the jump
-		const body = a.child("b");
-		if (body)
-			body.gotoAndStop(Math.max(0, Math.round(this.jumpHeight / 5) - 1));
-		if (this.eyeArt)
-			this.eyeArt.update(dt);
+	/** The eyelid opens again after a blink. */
+	updatePose(dt) {
+		this.blink = Math.max(0, this.blink - dt * 6);
 	}
 
 	renderShadow(ctx) {
 		if (this.particles && this.anim.time > 0.3)
 			return;
-		drawClip(ctx, shade || (shade = clip("boss shade")), this.x, this.y, 0, 1 + this.jumpHeight / 300, this.alpha);
+		ctx.save();
+		ctx.globalAlpha *= this.alpha;
+		drawOctopusShadow(ctx, this.drawX, this.drawY, this.jumpHeight);
+		ctx.restore();
 	}
 
 	render(ctx) {
 		// the red of the hits (original : a red offset of 60 per hit, + 100 while hurt)
-		const red = this.hits * 40 + Math.max(0, this.hurt / U) * 100;
+		const red = Math.min(1, (this.hits * 40 + Math.max(0, this.hurt / U) * 100) / 150);
+		const dying = this.particles && this.anim.time > 0.3;
 		ctx.save();
-		ctx.translate(this.x, this.y - this.jumpHeight);
 		ctx.globalAlpha *= this.alpha;
-		this.art.draw(ctx, red > 0 ? redOffset(red) : null);
+		if (!dying)
+			drawOctopus(ctx, this.drawX, this.drawY, {
+				anim: this.anim.name, animTime: this.anim.time,
+				pupilX: this.pupil.x, pupilY: this.pupil.y, pincers: this.pincers, suction: this.suction,
+				jump: this.jumpHeight, red, blink: this.blink, time: app.time
+			});
 		ctx.restore();
 
-		if (this.eye) {
-			const e = this.eyeArt || (this.eyeArt = clip("boss tir"));
-			ctx.save();
-			ctx.translate(this.eye.x, this.eye.y);
-			e.draw(ctx, this.hits ? redOffset(this.hits * 40) : null);
-			ctx.restore();
-		} else {
-			this.eyeArt = null;
-		}
-		if (this.particles) {
-			const c = particle || (particle = clip("bossParticule"));
+		if (this.eye)
+			drawThrownEye(ctx, this.eye.x, this.eye.y, app.time, this.hits);
+		if (this.particles)
 			for (const q of this.particles)
-				drawClip(ctx, c, q.x, q.y, 0, q.scale);
-		}
+				drawBlob(ctx, q.x, q.y, q.scale);
 	}
 }
-
-let shade = null;
-let particle = null;

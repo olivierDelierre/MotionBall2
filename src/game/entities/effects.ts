@@ -1,110 +1,82 @@
 /**
- * Short visual effects, played with the original symbols : they remove
- * themselves at the end of their animation (a "removeMovieClip" script).
+ * Short visual effects: they live for a duration and remove themselves.
  */
 
-import { Entity, Layer } from "../entity.js";
-import { clip, drawClip } from "../../gfx/xfl/index.js";
+import { Effect, Layer } from "../entity.js";
+import { drawSpark, drawDebris, drawBeamFlash } from "../../gfx/sprites.js";
+import { BALL_PALETTE } from "../../gfx/theme.js";
 
-/** An entity that plays a symbol once, and disappears when the symbol removes itself. */
-export class ClipEffect extends Entity {
-	declare art: any;
-	declare rotation: number;
-	declare scaleX: number;
-	declare scaleY: number;
-	declare maxTime: any;
-	declare dead: boolean;
+/** The little burst where the ball hits a wall. */
+export class Spark extends Effect {
 
-
-	constructor(symbol, x, y, layer = Layer.EFFECT, maxTime = 5) {
-		super(x, y, layer);
-		this.art = clip(symbol);
-		this.rotation = 0;
-		this.scaleX = 1;
-		this.scaleY = 1;
-		this.maxTime = maxTime;
-	}
-
-	update(dt) {
-		this.art.update(dt);
-		this.maxTime -= dt;
-		if (this.art.removed || this.maxTime <= 0)
-			this.dead = true;
+	constructor(x, y) {
+		super(x, y, 0.3);
 	}
 
 	render(ctx) {
-		ctx.save();
-		ctx.translate(this.x, this.y);
-		ctx.rotate(this.rotation);
-		ctx.scale(this.scaleX, this.scaleY);
-		this.art.draw(ctx);
-		ctx.restore();
+		drawSpark(ctx, this.x, this.y, this.t);
 	}
 }
 
-/** The little star where the ball hits a wall ("hit"). */
-export class Spark extends ClipEffect {
-
-	constructor(x, y) {
-		super("hit", x, y);
-	}
-}
-
-/**
- * A piece of a destroyed green block ("wallpart"), flying and shrinking
- * (Collide.wall_dummy_on_update : 30 frames, 5 degrees per frame).
- */
-export class Debris extends ClipEffect {
-	declare vx: any;
-	declare vy: any;
-	declare rotation: any;
-	declare time: number;
-	declare x: any;
-	declare y: any;
-	declare scaleX: any;
-	declare scaleY: any;
-	declare dead: boolean;
-
+/** A piece of a destroyed green block, flying and shrinking. */
+export class Debris extends Effect {
+	declare vx: number;
+	declare vy: number;
+	declare rotation: number;
 
 	constructor(x, y, vx, vy) {
-		super("wallpart", x, y);
+		super(x, y, 0.75);
 		this.vx = vx;
 		this.vy = vy;
 		this.rotation = Math.random() * Math.PI * 2;
-		this.time = 0;
 	}
 
 	update(dt) {
-		this.art.update(dt);
-		this.time += dt;
+		super.update(dt);
 		this.x += this.vx * dt;
 		this.y += this.vy * dt;
 		this.rotation += 200 * Math.PI / 180 * dt;
-		// (original : scale = time left x 200 / 50 %, from 30 frames)
-		this.scaleX = this.scaleY = 1.2 * Math.max(0, 1 - this.time / 0.75);
-		if (this.time >= 0.75)
-			this.dead = true;
+	}
+
+	render(ctx) {
+		drawDebris(ctx, this.x, this.y, this.rotation, 1 - this.t);
 	}
 }
 
-/**
- * The flash of a laser beam that killed the ball ("flashLine", 100 pixels
- * long : stretched between the two posts ; its child "gfx" has a frame per
- * colour).
- */
-export class BeamFlash extends ClipEffect {
-	declare rotation: any;
-	declare scaleX: any;
-
+/** The flash of a laser beam that killed the ball. */
+export class BeamFlash extends Effect {
+	declare bx: number;
+	declare by: number;
+	declare phase: number;
 
 	constructor(x1, y1, x2, y2, phase) {
-		super("flashLine", x1, y1);
-		this.rotation = Math.atan2(y2 - y1, x2 - x1);
-		this.scaleX = Math.hypot(x2 - x1, y2 - y1) / 100;
-		const gfx = this.art.child("gfx");
-		if (gfx)
-			gfx.gotoAndStop(phase);
+		super(x1, y1, 0.4, Layer.EFFECT);
+		this.bx = x2;
+		this.by = y2;
+		this.phase = phase;
+	}
+
+	render(ctx) {
+		drawBeamFlash(ctx, this.x, this.y, this.bx, this.by, BALL_PALETTE[this.phase][0], this.t);
 	}
 }
 
-export { drawClip };
+/** A ring of smoke that opens and fades (the final boss vanishing / appearing). */
+export class Puff extends Effect {
+
+	constructor(x, y, layer = Layer.BOSS) {
+		super(x, y, 0.3, layer);
+	}
+
+	render(ctx) {
+		const t = this.t;
+		ctx.save();
+		ctx.globalAlpha *= 1 - t;
+		ctx.strokeStyle = "#D5C2FF";
+		ctx.lineWidth = 8 * (1 - t) + 1;
+		ctx.beginPath();
+		ctx.arc(this.x, this.y, 12 + t * 40, 0, Math.PI * 2);
+		ctx.stroke();
+		ctx.restore();
+	}
+}
