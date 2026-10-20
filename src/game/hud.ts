@@ -19,7 +19,7 @@ import { app } from "../app.js";
 import { smooth } from "../engine/math.js";
 import { formatTime } from "../engine/math.js";
 
-const MAP_CELL = 7;
+const MAP_CELL = 5;
 const MAP_GAP = 1;
 
 export class Hud {
@@ -68,35 +68,35 @@ export class Hud {
 			label = "NIVEAU";
 			value = String(g.level + 1);
 		}
-		label_(ctx, label, 24, mid - 16);
+		label_(ctx, label, 24, mid - 15);
 		ctx.save();
 		if (this.lapFlash > 0) {
-			ctx.translate(24, mid + 14);
+			ctx.translate(24, mid + 16);
 			const s = 1 + this.lapFlash * 0.25;
 			ctx.scale(s, s);
-			ctx.translate(-24, -mid - 14);
+			ctx.translate(-24, -mid - 16);
 			ctx.fillStyle = COLOR.green;
 		} else {
 			ctx.fillStyle = COLOR.ink;
 		}
-		ctx.font = `700 28px ${FONT}`;
+		ctx.font = `700 24px ${FONT}`;
 		ctx.textAlign = "left";
 		ctx.textBaseline = "alphabetic";
-		ctx.fillText(value, 24, mid + 20);
+		ctx.fillText(value, 24, mid + 18);
 		ctx.restore();
 
 		// the time
 		const tx = 150, tw = 170;
-		label_(ctx, "TEMPS", tx, mid - 16);
+		label_(ctx, "TEMPS", tx, mid - 15);
 		const low = !r.laps && g.time < 60;
 		ctx.fillStyle = low ? COLOR.magenta : COLOR.cyanInk;
-		ctx.font = `700 22px ${FONT}`;
+		ctx.font = `700 20px ${FONT}`;
 		ctx.textAlign = "right";
-		ctx.fillText(formatTime(Math.max(0, this.shownTime)), tx + tw, mid - 10 + 16);
+		ctx.fillText(formatTime(Math.max(0, this.shownTime)), tx + tw, mid + 8);
 		if (r.startTime > 0 || r.maxTime) {
 			const total = r.maxTime || r.startTime;
 			const k = Math.max(0, Math.min(1, this.shownTime / total));
-			roundedRect(ctx, tx, mid + 12, tw, 8, 4);
+			roundedRect(ctx, tx, mid + 12, tw, 7, 3.5);
 			ctx.fillStyle = "rgba(30,21,69,0.1)";
 			ctx.fill();
 			if (k > 0) {
@@ -107,7 +107,7 @@ export class Hud {
 				ctx.shadowColor = low ? "rgba(255,46,126,0.5)" : "rgba(77,225,255,0.6)";
 				ctx.shadowBlur = 8;
 				ctx.fillStyle = bar;
-				roundedRect(ctx, tx, mid + 12, Math.max(8, tw * k), 8, 4);
+				roundedRect(ctx, tx, mid + 12, Math.max(7, tw * k), 7, 3.5);
 				ctx.fill();
 				ctx.restore();
 			}
@@ -116,20 +116,20 @@ export class Hud {
 		// the orbs
 		const room = g.room;
 		const ox = 350;
-		label_(ctx, "ORBES", ox, mid - 16);
+		label_(ctx, "ORBES", ox, mid - 15);
 		const total = room.redsTotal;
 		const taken = total - room.redsLeft;
 		for (let i = 0; i < Math.min(total, 8); i++) {
 			const cx = ox + 7 + i * 17;
 			if (i < taken) {
-				halo(ctx, cx, mid + 10, 12, "rgba(255,77,94,0.7)");
-				ctx.fillStyle = sphere(ctx, cx, mid + 10, 6.5, ["#FF9AA5", "#FF4D5E", "#C81E3A"]);
-				circlePath(ctx, cx, mid + 10, 6.5);
+				halo(ctx, cx, mid + 13, 12, "rgba(255,77,94,0.7)");
+				ctx.fillStyle = sphere(ctx, cx, mid + 13, 6.5, ["#FF9AA5", "#FF4D5E", "#C81E3A"]);
+				circlePath(ctx, cx, mid + 13, 6.5);
 				ctx.fill();
 			} else {
 				ctx.strokeStyle = "rgba(255,77,94,0.55)";
 				ctx.lineWidth = 2;
-				circlePath(ctx, cx, mid + 10, 5.5);
+				circlePath(ctx, cx, mid + 13, 5.5);
 				ctx.stroke();
 			}
 		}
@@ -137,7 +137,7 @@ export class Hud {
 			ctx.fillStyle = COLOR.ink;
 			ctx.font = `700 14px ${FONT}`;
 			ctx.textAlign = "left";
-			ctx.fillText(taken + "/" + total, ox, mid + 32);
+			ctx.fillText(taken + "/" + total, ox + 7 + Math.min(total, 8) * 17, mid + 15);
 		}
 
 		// the map of the visited rooms
@@ -196,11 +196,11 @@ export class Hud {
 		ctx.fillStyle = COLOR.muted;
 		ctx.font = `600 10px ${FONT}`;
 		ctx.textAlign = "right";
-		ctx.fillText("SALLES", x0 - 8, mid - 4);
+		ctx.fillText("SALLES", x0 - 8, mid - 5);
 		ctx.fillStyle = COLOR.ink;
-		ctx.font = `700 20px ${FONT}`;
+		ctx.font = `700 18px ${FONT}`;
 		this.explored();
-		ctx.fillText(String(this.visitedCount).padStart(2, "0"), x0 - 8, mid + 16);
+		ctx.fillText(String(this.visitedCount).padStart(2, "0"), x0 - 8, mid + 14);
 	}
 
 	/** The balls owned and the keys, drawn in room coordinates over the floor. */

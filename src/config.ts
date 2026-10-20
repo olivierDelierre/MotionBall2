@@ -14,7 +14,7 @@ export const WIDTH = 610;
 export const HEIGHT = 410;
 
 /** Height of the HUD band above the room; the canvas is WIDTH x VIEW_HEIGHT. */
-export const HUD_HEIGHT = 72;
+export const HUD_HEIGHT = 52;
 export const VIEW_HEIGHT = HEIGHT + HUD_HEIGHT;
 
 /** Thickness of the green border around the room. */
