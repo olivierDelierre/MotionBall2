@@ -78,18 +78,38 @@ export function sphere(ctx: CanvasRenderingContext2D, x: number, y: number, r: n
 	return g;
 }
 
-/** A soft coloured halo around a point. */
+const haloCache = new Map<string, HTMLCanvasElement>();
+
+/**
+ * A soft coloured halo around a point. The gradient is painted once per
+ * colour, size and resolution, then copied: much cheaper than building a
+ * gradient for each of the dozens of halos of a frame.
+ */
 export function halo(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string, alpha = 1): void {
 	if (alpha <= 0)
 		return;
-	const g = ctx.createRadialGradient(x, y, 0, x, y, r);
-	g.addColorStop(0, color);
-	g.addColorStop(1, "rgba(255,255,255,0)");
+	const scale = ctx.getTransform?.()?.a || 1;
+	const rr = Math.max(1, Math.round(r / 2) * 2);
+	const key = color + "|" + rr + "|" + scale.toFixed(2);
+	let sprite = haloCache.get(key);
+	if (!sprite) {
+		sprite = document.createElement("canvas");
+		const size = Math.ceil(rr * 2 * scale);
+		sprite.width = size;
+		sprite.height = size;
+		const c = sprite.getContext("2d");
+		if (c) {
+			const g = c.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+			g.addColorStop(0, color);
+			g.addColorStop(1, "rgba(255,255,255,0)");
+			c.fillStyle = g;
+			c.fillRect(0, 0, size, size);
+		}
+		haloCache.set(key, sprite);
+	}
 	ctx.save();
 	ctx.globalAlpha *= alpha;
-	ctx.fillStyle = g;
-	circlePath(ctx, x, y, r);
-	ctx.fill();
+	ctx.drawImage(sprite, x - r, y - r, r * 2, r * 2);
 	ctx.restore();
 }
 

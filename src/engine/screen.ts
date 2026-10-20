@@ -34,7 +34,7 @@ export class Screen {
 		const scale = Math.max(0.3, Math.min(availableW / WIDTH, availableH / HEIGHT));
 
 		this.scale = scale;
-		this.pixelRatio = Math.min(3, window.devicePixelRatio || 1);
+		this.pixelRatio = Math.min(1.5, window.devicePixelRatio || 1);
 		this.canvas.style.width = Math.floor(WIDTH * scale) + "px";
 		this.canvas.style.height = Math.floor(HEIGHT * scale) + "px";
 		this.canvas.width = Math.floor(WIDTH * scale * this.pixelRatio);

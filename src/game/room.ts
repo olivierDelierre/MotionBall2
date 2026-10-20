@@ -76,6 +76,48 @@ class TileGrid {
 	}
 }
 
+let floorCache: { scale: number; canvas: HTMLCanvasElement } | null = null;
+
+function paintFloor(ctx) {
+	const bg = ctx.createRadialGradient(W / 2, 0, 0, W / 2, 0, W * 0.8);
+	bg.addColorStop(0, COLOR.backdropLight);
+	bg.addColorStop(1, COLOR.backdrop);
+	ctx.fillStyle = bg;
+	ctx.fillRect(0, 0, W, H);
+
+	ctx.save();
+	roundedRect(ctx, B, B, W - 2 * B, H - 2 * B, CORNER);
+	const floor = ctx.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H * 0.45, W * 0.55);
+	floor.addColorStop(0, COLOR.floorLight);
+	floor.addColorStop(1, COLOR.floorDark);
+	ctx.shadowColor = "rgba(60,40,140,0.2)";
+	ctx.shadowBlur = 24;
+	ctx.shadowOffsetY = 8;
+	ctx.fillStyle = floor;
+	ctx.fill();
+	ctx.shadowColor = "transparent";
+	ctx.clip();
+	ctx.strokeStyle = "rgba(255,255,255,0.16)";
+	ctx.lineWidth = 1;
+	ctx.beginPath();
+	for (let x = TILE_ORIGIN; x < W; x += TILE) {
+		ctx.moveTo(x + 0.5, 0);
+		ctx.lineTo(x + 0.5, H);
+	}
+	for (let y = TILE_ORIGIN; y < H; y += TILE) {
+		ctx.moveTo(0, y + 0.5);
+		ctx.lineTo(W, y + 0.5);
+	}
+	ctx.stroke();
+	// the inner glow of the edge
+	const edge = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, W * 0.62);
+	edge.addColorStop(0, "rgba(90,50,190,0)");
+	edge.addColorStop(1, "rgba(90,50,190,0.22)");
+	ctx.fillStyle = edge;
+	ctx.fillRect(0, 0, W, H);
+	ctx.restore();
+}
+
 export class Room {
 	declare rx: any;
 	declare ry: any;
@@ -414,43 +456,18 @@ export class Room {
 
 	/** The lavender backdrop, and the violet floor with its 40 px grid. */
 	renderFloor(ctx) {
-		const bg = ctx.createRadialGradient(W / 2, 0, 0, W / 2, 0, W * 0.8);
-		bg.addColorStop(0, COLOR.backdropLight);
-		bg.addColorStop(1, COLOR.backdrop);
-		ctx.fillStyle = bg;
-		ctx.fillRect(0, 0, W, H);
-
-		ctx.save();
-		roundedRect(ctx, B, B, W - 2 * B, H - 2 * B, CORNER);
-		const floor = ctx.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H * 0.45, W * 0.55);
-		floor.addColorStop(0, COLOR.floorLight);
-		floor.addColorStop(1, COLOR.floorDark);
-		ctx.shadowColor = "rgba(60,40,140,0.2)";
-		ctx.shadowBlur = 24;
-		ctx.shadowOffsetY = 8;
-		ctx.fillStyle = floor;
-		ctx.fill();
-		ctx.shadowColor = "transparent";
-		ctx.clip();
-		ctx.strokeStyle = "rgba(255,255,255,0.16)";
-		ctx.lineWidth = 1;
-		ctx.beginPath();
-		for (let x = TILE_ORIGIN; x < W; x += TILE) {
-			ctx.moveTo(x + 0.5, 0);
-			ctx.lineTo(x + 0.5, H);
+		// the floor never changes: paint it once per resolution, then just copy it
+		const scale = ctx.getTransform?.()?.a || 1;
+		if (!floorCache || floorCache.scale !== scale) {
+			const canvas = document.createElement("canvas");
+			canvas.width = Math.ceil(W * scale);
+			canvas.height = Math.ceil(H * scale);
+			const c = canvas.getContext("2d");
+			c.scale(scale, scale);
+			paintFloor(c);
+			floorCache = { scale, canvas };
 		}
-		for (let y = TILE_ORIGIN; y < H; y += TILE) {
-			ctx.moveTo(0, y + 0.5);
-			ctx.lineTo(W, y + 0.5);
-		}
-		ctx.stroke();
-		// the inner glow of the edge
-		const edge = ctx.createRadialGradient(W / 2, H / 2, H * 0.3, W / 2, H / 2, W * 0.62);
-		edge.addColorStop(0, "rgba(90,50,190,0)");
-		edge.addColorStop(1, "rgba(90,50,190,0.22)");
-		ctx.fillStyle = edge;
-		ctx.fillRect(0, 0, W, H);
-		ctx.restore();
+		ctx.drawImage(floorCache.canvas, 0, 0, W, H);
 	}
 
 	/** The outline of the floor and the doors (drawn over the room). */

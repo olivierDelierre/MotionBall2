@@ -15,6 +15,7 @@
 import { WIDTH as W, HEIGHT as H, HUD_HEIGHT, BORDER } from "../config.js";
 import { BALL_TYPE_COUNT } from "../data/enums.js";
 import { COLOR, FONT, BALL_PALETTE, roundedRect, circlePath, sphere, halo } from "../gfx/theme.js";
+import { app } from "../app.js";
 import { smooth } from "../engine/math.js";
 import { formatTime } from "../engine/math.js";
 
@@ -25,11 +26,17 @@ export class Hud {
 	declare game: any;
 	declare shownTime: number;
 	declare lapFlash: number;
+	declare cacheAt: number;
+	declare cached: number;
+	declare visitedCount: number;
 
 	constructor(game) {
 		this.game = game;
 		this.shownTime = game.time;
 		this.lapFlash = 0;
+		this.cacheAt = -1;
+		this.cached = 0;
+		this.visitedCount = 0;
 	}
 
 	/** (the game tells the HUD about time changes: it does not need to react) */
@@ -53,7 +60,7 @@ export class Hud {
 
 		// the main figure
 		let label = "DONJON";
-		let value = String(g.stats.explored ?? this.explored()) + " %";
+		let value = String(this.explored()) + " %";
 		if (r.laps) {
 			label = "TOURS";
 			value = String(Math.max(0, g.laps - 1));
@@ -138,13 +145,17 @@ export class Hud {
 	}
 
 	explored(): number {
+		if (this.cacheAt === app.time)
+			return this.cached;
+		this.cacheAt = app.time;
 		let rooms = 0, visited = 0;
 		for (const { room } of this.game.dungeon.allRooms()) {
 			rooms++;
 			if (room.visited)
 				visited++;
 		}
-		return rooms ? Math.floor(visited * 100 / rooms) : 0;
+		this.visitedCount = visited;
+		return this.cached = rooms ? Math.floor(visited * 100 / rooms) : 0;
 	}
 
 	renderMap(ctx: CanvasRenderingContext2D, right: number, mid: number): void {
@@ -188,11 +199,8 @@ export class Hud {
 		ctx.fillText("SALLES", x0 - 8, mid - 4);
 		ctx.fillStyle = COLOR.ink;
 		ctx.font = `700 20px ${FONT}`;
-		let visited = 0;
-		for (const { room } of d.allRooms())
-			if (room.visited)
-				visited++;
-		ctx.fillText(String(visited).padStart(2, "0"), x0 - 8, mid + 16);
+		this.explored();
+		ctx.fillText(String(this.visitedCount).padStart(2, "0"), x0 - 8, mid + 16);
 	}
 
 	/** The balls owned and the keys, drawn in room coordinates over the floor. */

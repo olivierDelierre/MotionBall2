@@ -395,7 +395,7 @@ export class Game {
 		bg.addColorStop(0, COLOR.backdropLight);
 		bg.addColorStop(1, COLOR.backdrop);
 		ctx.fillStyle = bg;
-		ctx.fillRect(0, 0, W, VIEW_HEIGHT);
+		ctx.fillRect(0, 0, W, HUD_HEIGHT);
 		this.hud.renderBand(ctx);
 
 		// the room, under the band
