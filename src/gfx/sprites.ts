@@ -32,12 +32,13 @@ export function drawOrb(ctx: CanvasRenderingContext2D, x: number, y: number, kin
 		// the pulse of the time orbs
 		const p = (time % 2.2) / 2.2;
 		const k = Math.sin(p * Math.PI);
+		ctx.save();
 		ctx.strokeStyle = COLOR.cyan;
 		ctx.lineWidth = 2;
 		ctx.globalAlpha *= 0.55 - 0.45 * k;
 		circlePath(ctx, x, y, ORB_RADIUS * (1.6 + 0.5 * k));
 		ctx.stroke();
-		ctx.globalAlpha /= 0.55 - 0.45 * k;
+		ctx.restore();
 	}
 	ctx.fillStyle = sphere(ctx, x, y, ORB_RADIUS * s, stops);
 	circlePath(ctx, x, y, ORB_RADIUS * s);
@@ -597,9 +598,10 @@ export function drawBeamFlash(ctx: CanvasRenderingContext2D, ax: number, ay: num
 	ctx.lineCap = "round";
 	ctx.strokeStyle = color;
 	ctx.lineWidth = 12 * (1 - t) + 2;
+	ctx.save();
 	ctx.globalAlpha *= 0.4;
 	ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
-	ctx.globalAlpha /= 0.4;
+	ctx.restore();
 	ctx.strokeStyle = "#FFFFFF";
 	ctx.lineWidth = 3 * (1 - t) + 1;
 	ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
@@ -639,11 +641,12 @@ export function drawBallSprite(ctx: CanvasRenderingContext2D, x: number, y: numb
 	for (let i = trail.length - 1; i >= 0; i--) {
 		const p = trail[i];
 		const k = 1 - (i + 1) / (trail.length + 1);
+		ctx.save();
 		ctx.globalAlpha *= 0.4 * k;
 		ctx.fillStyle = main;
 		circlePath(ctx, p.x, p.y, r * (0.45 + 0.4 * k));
 		ctx.fill();
-		ctx.globalAlpha /= 0.4 * k;
+		ctx.restore();
 	}
 	halo(ctx, x, y, r * 2.4, type === 5 ? "rgba(184,191,208,0.6)" : main, 0.55);
 	ctx.fillStyle = sphere(ctx, x, y, r, [light, main, dark]);
