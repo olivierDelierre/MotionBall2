@@ -105,7 +105,30 @@ function step(dt) {
 }
 
 /** One displayed frame. */
+/** Frame-time watch: if frames keep taking too long, draw at a lower resolution. */
+let lastFrame = 0;
+let slowFrames = 0;
+let frames = 0;
+function watchFrameTime() {
+	const now = performance.now();
+	if (lastFrame) {
+		const dt = now - lastFrame;
+		frames++;
+		// (a 30 Hz screen is not slow: only frames over 40 ms count)
+		if (dt > 24 && dt < 400)
+			slowFrames++;
+		if (frames >= 90) {
+			if (slowFrames > 30 && app.screen.lowerQuality())
+				console.info("MotionBall: lowering the resolution to keep up");
+			frames = 0;
+			slowFrames = 0;
+		}
+	}
+	lastFrame = now;
+}
+
 function render(alpha = 1) {
+	watchFrameTime();
 	app.alpha = alpha;
 	app.input.poll();
 	const ctx = app.screen.begin();

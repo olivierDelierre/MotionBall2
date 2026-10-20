@@ -1,6 +1,6 @@
 /** Tourneboule, the final boss: a spinning ball with a ring, a face and a shield. */
 
-import { COLOR, TAU, circlePath, halo, sphere, dropShadow } from "./theme.js";
+import { COLOR, TAU, circlePath, halo, sphere, dropShadow, drawSphere } from "./theme.js";
 
 export interface TBPose {
 	spin: number;        // angle of the ring
@@ -25,9 +25,7 @@ export function drawTourneboule(ctx: CanvasRenderingContext2D, x: number, y: num
 	ctx.globalAlpha *= 1 - p.death * 0.6;
 
 	halo(ctx, 0, 0, 62, "rgba(255,46,126,0.4)");
-	ctx.fillStyle = sphere(ctx, 0, 0, 31, ["#E8D5FF", "#8A52F0", "#3B1A8A"]);
-	circlePath(ctx, 0, 0, 31);
-	ctx.fill();
+	drawSphere(ctx, 0, 0, 31, ["#E8D5FF", "#8A52F0", "#3B1A8A"]);
 
 	// the ring turns around it
 	ctx.save();

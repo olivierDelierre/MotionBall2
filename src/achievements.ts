@@ -18,7 +18,7 @@
 import { WIDTH as W } from "./config.js";
 import { Mode, BallType } from "./data/enums.js";
 import { text } from "./gfx/draw.js";
-import { COLOR, roundedRect } from "./gfx/theme.js";
+import { COLOR, roundedRect, softShadow } from "./gfx/theme.js";
 
 /** The dungeon balls of a Challenge : green, blue, metal, violet. */
 const DUNGEON_BALLS = [BallType.GREEN, BallType.BLUE, BallType.METAL, BallType.VIOLET];
@@ -199,13 +199,10 @@ export class Achievements {
 		const k = Math.min(1, t / 0.3, (BANNER_TIME - t) / 0.3);
 		const y = -30 + 52 * Math.max(0, k);
 		ctx.save();
-		ctx.shadowColor = "rgba(60,40,140,0.3)";
-		ctx.shadowBlur = 16;
-		ctx.shadowOffsetY = 4;
+		softShadow(ctx, W / 2 - 150, y - 20, 300, 44, 22, 10, 0.35, 4);
 		roundedRect(ctx, W / 2 - 150, y - 20, 300, 44, 22);
 		ctx.fillStyle = "#FFFFFF";
 		ctx.fill();
-		ctx.shadowColor = "transparent";
 		ctx.strokeStyle = COLOR.green;
 		ctx.lineWidth = 2;
 		ctx.stroke();

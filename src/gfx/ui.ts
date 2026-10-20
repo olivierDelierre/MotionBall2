@@ -4,19 +4,15 @@
  * `focus` amount (0..1) so that the caller can animate it at any frame rate.
  */
 
-import { COLOR, FONT, roundedRect, circlePath, sphere, halo } from "./theme.js";
+import { COLOR, FONT, roundedRect, circlePath, halo, softShadow, drawSphere } from "./theme.js";
 import { text } from "./draw.js";
 
 /** A white panel with a soft shadow. */
 export function panel(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, radius = 20): void {
-	ctx.save();
-	ctx.shadowColor = "rgba(60,40,140,0.22)";
-	ctx.shadowBlur = 24;
-	ctx.shadowOffsetY = 8;
+	softShadow(ctx, x, y, w, h, radius, 18, 0.3, 8);
 	roundedRect(ctx, x, y, w, h, radius);
 	ctx.fillStyle = "#FFFFFF";
 	ctx.fill();
-	ctx.restore();
 	roundedRect(ctx, x + 0.5, y + 0.5, w - 1, h - 1, radius);
 	ctx.strokeStyle = "rgba(30,21,69,0.1)";
 	ctx.lineWidth = 1;
@@ -45,14 +41,10 @@ export function card(ctx: CanvasRenderingContext2D, x: number, y: number, w: num
 	ctx.scale(s, s);
 	ctx.globalAlpha *= enabled ? 1 : 0.55;
 
-	ctx.save();
-	ctx.shadowColor = `rgba(60,40,140,${0.1 + 0.16 * f})`;
-	ctx.shadowBlur = 12 + 14 * f;
-	ctx.shadowOffsetY = 4 + 4 * f;
+	softShadow(ctx, -w / 2, -h / 2, w, h, 16, 8 + 6 * f, 0.22 + 0.2 * f, 4 + 4 * f);
 	roundedRect(ctx, -w / 2, -h / 2, w, h, 16);
 	ctx.fillStyle = "#FFFFFF";
 	ctx.fill();
-	ctx.restore();
 	roundedRect(ctx, -w / 2 + 1, -h / 2 + 1, w - 2, h - 2, 15);
 	ctx.strokeStyle = f > 0.5 ? COLOR.green : "rgba(30,21,69,0.1)";
 	ctx.lineWidth = f > 0.5 ? 2.5 : 1;
@@ -62,9 +54,13 @@ export function card(ctx: CanvasRenderingContext2D, x: number, y: number, w: num
 	const ox = -w / 2 + 30;
 	if (enabled)
 		halo(ctx, ox, 0, 28, orb[1], 0.35 + 0.3 * f);
-	ctx.fillStyle = enabled ? sphere(ctx, ox, 0, 14, orb as [string, string, string]) : "#C9C2E0";
-	circlePath(ctx, ox, 0, 14);
-	ctx.fill();
+	if (enabled) {
+		drawSphere(ctx, ox, 0, 14, orb as [string, string, string]);
+	} else {
+		ctx.fillStyle = "#C9C2E0";
+		circlePath(ctx, ox, 0, 14);
+		ctx.fill();
+	}
 	if (!enabled)
 		lock(ctx, ox, 0);
 
@@ -98,10 +94,7 @@ export function button(ctx: CanvasRenderingContext2D, label: string, x: number, 
 	ctx.translate(x, y);
 	if (focus)
 		ctx.scale(1.05, 1.05);
-	ctx.save();
-	ctx.shadowColor = "rgba(60,40,140,0.25)";
-	ctx.shadowBlur = 12;
-	ctx.shadowOffsetY = 4;
+	softShadow(ctx, -w / 2, -h / 2, w, h, h / 2, 7, 0.3, 4);
 	const g = ctx.createLinearGradient(0, -h / 2, 0, h / 2);
 	if (disabled) {
 		g.addColorStop(0, "#D6D0EA");
@@ -116,7 +109,6 @@ export function button(ctx: CanvasRenderingContext2D, label: string, x: number, 
 	ctx.fillStyle = g;
 	roundedRect(ctx, -w / 2, -h / 2, w, h, h / 2);
 	ctx.fill();
-	ctx.restore();
 	roundedRect(ctx, -w / 2 + 0.5, -h / 2 + 0.5, w - 1, h - 1, h / 2);
 	ctx.strokeStyle = focus ? "#3A8F14" : "rgba(30,21,69,0.15)";
 	ctx.lineWidth = 1.5;
@@ -139,8 +131,7 @@ export function slider(ctx: CanvasRenderingContext2D, x: number, y: number, w: n
 	roundedRect(ctx, x, y - 4, Math.max(8, w * value), 8, 4);
 	ctx.fill();
 	ctx.fillStyle = "#FFFFFF";
-	ctx.shadowColor = "rgba(60,40,140,0.4)";
-	ctx.shadowBlur = 6;
+	halo(ctx, x + w * value, y, 14, "rgba(60,40,140,0.35)");
 	circlePath(ctx, x + w * value, y, active ? 9 : 7);
 	ctx.fill();
 	ctx.restore();

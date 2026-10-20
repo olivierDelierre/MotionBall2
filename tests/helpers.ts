@@ -138,7 +138,7 @@ export class FakeAudio {
 }
 
 /** A 2D context that accepts every call (and a canvas that returns it). */
-export function fakeContext() {
+export function fakeContext(): any {
 	const gradient = { addColorStop() { } };
 	const target = {
 		canvas: { width: 610, height: 410 },

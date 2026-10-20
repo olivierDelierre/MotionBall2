@@ -14,7 +14,7 @@
 
 import { WIDTH as W, HEIGHT as H, HUD_HEIGHT, BORDER } from "../config.js";
 import { BALL_TYPE_COUNT } from "../data/enums.js";
-import { COLOR, FONT, BALL_PALETTE, roundedRect, circlePath, sphere, halo } from "../gfx/theme.js";
+import { COLOR, FONT, BALL_PALETTE, roundedRect, circlePath, sphere, halo, drawSphere } from "../gfx/theme.js";
 import { app } from "../app.js";
 import { smooth } from "../engine/math.js";
 import { formatTime } from "../engine/math.js";
@@ -103,13 +103,9 @@ export class Hud {
 				const bar = ctx.createLinearGradient(tx, 0, tx + tw, 0);
 				bar.addColorStop(0, low ? COLOR.magenta : COLOR.cyan);
 				bar.addColorStop(1, low ? COLOR.amber : "#8EA8FF");
-				ctx.save();
-				ctx.shadowColor = low ? "rgba(255,46,126,0.5)" : "rgba(77,225,255,0.6)";
-				ctx.shadowBlur = 8;
 				ctx.fillStyle = bar;
 				roundedRect(ctx, tx, mid + 12, Math.max(7, tw * k), 7, 3.5);
 				ctx.fill();
-				ctx.restore();
 			}
 		}
 
@@ -123,9 +119,7 @@ export class Hud {
 			const cx = ox + 7 + i * 17;
 			if (i < taken) {
 				halo(ctx, cx, mid + 13, 12, "rgba(255,77,94,0.7)");
-				ctx.fillStyle = sphere(ctx, cx, mid + 13, 6.5, ["#FF9AA5", "#FF4D5E", "#C81E3A"]);
-				circlePath(ctx, cx, mid + 13, 6.5);
-				ctx.fill();
+				drawSphere(ctx, cx, mid + 13, 6.5, ["#FF9AA5", "#FF4D5E", "#C81E3A"]);
 			} else {
 				ctx.strokeStyle = "rgba(255,77,94,0.55)";
 				ctx.lineWidth = 2;
@@ -174,13 +168,10 @@ export class Hud {
 				const px = x0 + x * size, py = y0 + y * size;
 				const here = x === cur.rx && y === cur.ry;
 				if (here) {
-					ctx.save();
-					ctx.shadowColor = "rgba(95,203,43,0.8)";
-					ctx.shadowBlur = 6;
+					halo(ctx, px + MAP_CELL / 2, py + MAP_CELL / 2, 8, "rgba(95,203,43,0.8)");
 					ctx.fillStyle = COLOR.green;
 					roundedRect(ctx, px, py, MAP_CELL, MAP_CELL, 2);
 					ctx.fill();
-					ctx.restore();
 				} else if (room.visited) {
 					ctx.fillStyle = COLOR.roomOn;
 					roundedRect(ctx, px, py, MAP_CELL, MAP_CELL, 2);
@@ -224,9 +215,7 @@ export class Hud {
 					circlePath(ctx, x, y, 10);
 					ctx.stroke();
 				}
-				ctx.fillStyle = sphere(ctx, x, y, 7, [light, main, dark]);
-				circlePath(ctx, x, y, 7);
-				ctx.fill();
+				drawSphere(ctx, x, y, 7, [light, main, dark]);
 				ctx.restore();
 				i++;
 			}

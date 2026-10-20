@@ -7,7 +7,7 @@
 import { WIDTH as W, VIEW_HEIGHT as H } from "../config.js";
 import { ACHIEVEMENTS } from "../achievements.js";
 import { text } from "../gfx/draw.js";
-import { COLOR, BALL_PALETTE, roundedRect, circlePath, sphere } from "../gfx/theme.js";
+import { COLOR, BALL_PALETTE, roundedRect, circlePath, sphere, drawSphere, softShadow } from "../gfx/theme.js";
 import { backdrop } from "../gfx/ui.js";
 import { app } from "../app.js";
 import { MenuScene } from "./menu.js";
@@ -61,21 +61,15 @@ export class AchievementsScene {
 			const hidden = a.secret && !done;
 			const h = ROW - 6;
 
-			ctx.save();
-			ctx.shadowColor = "rgba(60,40,140,0.12)";
-			ctx.shadowBlur = 10;
-			ctx.shadowOffsetY = 3;
+			softShadow(ctx, x, y, CELL_W, h, 12, 5, 0.18, 3);
 			roundedRect(ctx, x, y, CELL_W, h, 12);
 			ctx.fillStyle = done ? "#FFFFFF" : "rgba(255,255,255,0.55)";
 			ctx.fill();
-			ctx.restore();
 
 			// the icon: an orb of the achievement's colour, dim while locked
 			const [main, dark, light] = BALL_PALETTE[a.ball];
 			ctx.globalAlpha = done ? 1 : 0.3;
-			ctx.fillStyle = sphere(ctx, x + 20, y + h / 2, 11, [light, main, dark]);
-			circlePath(ctx, x + 20, y + h / 2, 11);
-			ctx.fill();
+			drawSphere(ctx, x + 20, y + h / 2, 11, [light, main, dark]);
 			ctx.globalAlpha = 1;
 
 			const name = hidden ? "???" : a.name;

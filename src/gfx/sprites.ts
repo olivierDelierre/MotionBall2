@@ -7,7 +7,7 @@
  */
 
 import { TILE, TILE_ORIGIN } from "../config.js";
-import { COLOR, BALL_PALETTE, TAU, circlePath, roundedRect, sphere, halo, dropShadow, lighten } from "./theme.js";
+import { COLOR, BALL_PALETTE, TAU, circlePath, roundedRect, sphere, halo, dropShadow, lighten, drawSphere } from "./theme.js";
 
 // ----- orbs -----
 
@@ -40,9 +40,7 @@ export function drawOrb(ctx: CanvasRenderingContext2D, x: number, y: number, kin
 		ctx.stroke();
 		ctx.restore();
 	}
-	ctx.fillStyle = sphere(ctx, x, y, ORB_RADIUS * s, stops);
-	circlePath(ctx, x, y, ORB_RADIUS * s);
-	ctx.fill();
+	drawSphere(ctx, x, y, ORB_RADIUS * s, stops);
 	ctx.restore();
 }
 
@@ -73,9 +71,7 @@ export function drawBumper(ctx: CanvasRenderingContext2D, x: number, y: number, 
 	ctx.fill();
 	const core = r * 0.36;
 	halo(ctx, 0, 0, core * 2.4, "rgba(124,58,237,0.8)", 0.6 + 0.4 * hit);
-	ctx.fillStyle = sphere(ctx, 0, 0, core, ["#D5C2FF", "#7C3AED", "#3B1A8A"]);
-	circlePath(ctx, 0, 0, core);
-	ctx.fill();
+	drawSphere(ctx, 0, 0, core, ["#D5C2FF", "#7C3AED", "#3B1A8A"]);
 	ctx.restore();
 }
 
@@ -397,9 +393,7 @@ export function drawZapper(ctx: CanvasRenderingContext2D, x: number, y: number, 
 	ctx.strokeStyle = main;
 	ctx.lineWidth = 3;
 	ctx.stroke();
-	ctx.fillStyle = sphere(ctx, 0, 0, 7, [light, main, dark]);
-	circlePath(ctx, 0, 0, 7);
-	ctx.fill();
+	drawSphere(ctx, 0, 0, 7, [light, main, dark]);
 	ctx.restore();
 }
 
@@ -467,9 +461,7 @@ export function drawBallBox(ctx: CanvasRenderingContext2D, x: number, y: number,
 	ctx.stroke();
 	ctx.setLineDash([]);
 	dropShadow(ctx, x + 2, y + 12, 10, 4);
-	ctx.fillStyle = sphere(ctx, x, y + bob, 11, [light, main, dark]);
-	circlePath(ctx, x, y + bob, 11);
-	ctx.fill();
+	drawSphere(ctx, x, y + bob, 11, [light, main, dark]);
 	ctx.restore();
 }
 
@@ -649,9 +641,7 @@ export function drawBallSprite(ctx: CanvasRenderingContext2D, x: number, y: numb
 		ctx.restore();
 	}
 	halo(ctx, x, y, r * 2.4, type === 5 ? "rgba(184,191,208,0.6)" : main, 0.55);
-	ctx.fillStyle = sphere(ctx, x, y, r, [light, main, dark]);
-	circlePath(ctx, x, y, r);
-	ctx.fill();
+	drawSphere(ctx, x, y, r, [light, main, dark]);
 	// the specular spot
 	ctx.fillStyle = "rgba(255,255,255,0.65)";
 	ctx.beginPath();
