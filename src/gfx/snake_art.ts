@@ -3,7 +3,7 @@
  * own frame (the caller rotates it). Elements: 0 water, 1 fire, 2 wind, 3 earth.
  */
 
-import { COLOR, TAU, circlePath, halo, sphere } from "./theme.js";
+import { COLOR, TAU, circlePath, halo, sphere, drawSphere } from "./theme.js";
 
 /** Light, main and dark colour of each element. */
 export const ELEMENT_COLORS: readonly [string, string, string][] = [
@@ -18,9 +18,7 @@ const EYE_COLORS = ["#FF4D5E", "#5FCB2B", "#FFD21E"];
 export function drawSnakePart(ctx: CanvasRenderingContext2D, kind: "head" | "ring" | "tail", element: number, eyes: number, bite: number): void {
 	const [light, main, dark] = ELEMENT_COLORS[element];
 	if (kind === "ring") {
-		ctx.fillStyle = sphere(ctx, 0, 0, 26, [light, main, dark]);
-		circlePath(ctx, 0, 0, 26);
-		ctx.fill();
+		drawSphere(ctx, 0, 0, 26, [light, main, dark]);
 		ctx.strokeStyle = dark;
 		ctx.lineWidth = 2;
 		ctx.stroke();

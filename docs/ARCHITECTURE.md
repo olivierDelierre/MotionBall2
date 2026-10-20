@@ -192,6 +192,16 @@ update) and draw at `drawX` / `drawY`, which blend the two. A jump of more than
 same with its progress. UI motion (cards growing, the title) uses real time
 and a frame-rate independent decay (`1 - exp(-dt * k)`).
 
+**Staying fast on a phone.** Gradients and shadows are the costly part of a
+canvas frame, so: halos and spheres are painted once into small bitmaps and
+copied (`gfx/theme.ts`, a bounded cache emptied when the resolution changes);
+shadows are stacked translucent shapes (`softShadow`), never `shadowBlur`; the
+floor is painted once and copied. The canvas never exceeds 1.6 million pixels
+and 1.5x the device ratio, resize events are handled once per frame, and if
+frames keep taking over 24 ms `Screen.lowerQuality()` draws at a lower
+resolution (the browser scales it up). `tests/soak.test.ts` plays long games
+and checks that nothing grows without bound.
+
 **The bosses.** Their poses come from their state machines; where the original
 timeline called back into the code (Tourneboule's `kataDone` / `animDone`) the
 durations are kept in a table (`KATA_TIMES`).

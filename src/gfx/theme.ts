@@ -78,39 +78,102 @@ export function sphere(ctx: CanvasRenderingContext2D, x: number, y: number, r: n
 	return g;
 }
 
-const haloCache = new Map<string, HTMLCanvasElement>();
+/** Device pixels per game pixel of the frame being drawn (set by Screen.begin). */
+export const view = { scale: 1 };
 
 /**
- * A soft coloured halo around a point. The gradient is painted once per
- * colour, size and resolution, then copied: much cheaper than building a
- * gradient for each of the dozens of halos of a frame.
+ * Small pre-painted bitmaps (halos, spheres), copied instead of rebuilding a
+ * gradient for every use. The cache is bounded and is emptied when the
+ * resolution changes (rotating or folding the phone, the browser bars), so it
+ * can never grow without limit.
+ */
+const MAX_SPRITES = 160;
+const sprites = new Map<string, HTMLCanvasElement>();
+let spriteScale = 1;
+
+function sprite(key: string, size: number, paint: (c: CanvasRenderingContext2D, px: number) => void): HTMLCanvasElement {
+	if (Math.abs(view.scale - spriteScale) > spriteScale * 0.05) {
+		sprites.clear();
+		spriteScale = view.scale;
+	}
+	let canvas = sprites.get(key);
+	if (canvas) {
+		// (most recently used last)
+		sprites.delete(key);
+		sprites.set(key, canvas);
+		return canvas;
+	}
+	canvas = document.createElement("canvas");
+	const px = Math.max(2, Math.ceil(size * spriteScale));
+	canvas.width = px;
+	canvas.height = px;
+	const c = canvas.getContext("2d");
+	if (c)
+		paint(c, px);
+	sprites.set(key, canvas);
+	if (sprites.size > MAX_SPRITES)
+		sprites.delete(sprites.keys().next().value as string);
+	return canvas;
+}
+
+/** How many bitmaps are cached (for the tests). */
+export function spriteCount(): number {
+	return sprites.size;
+}
+
+/**
+ * A soft coloured halo around a point, painted once per colour and size,
+ * then copied.
  */
 export function halo(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, color: string, alpha = 1): void {
 	if (alpha <= 0)
 		return;
-	const scale = ctx.getTransform?.()?.a || 1;
-	const rr = Math.max(1, Math.round(r / 2) * 2);
-	const key = color + "|" + rr + "|" + scale.toFixed(2);
-	let sprite = haloCache.get(key);
-	if (!sprite) {
-		sprite = document.createElement("canvas");
-		const size = Math.ceil(rr * 2 * scale);
-		sprite.width = size;
-		sprite.height = size;
-		const c = sprite.getContext("2d");
-		if (c) {
-			const g = c.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-			g.addColorStop(0, color);
-			g.addColorStop(1, "rgba(255,255,255,0)");
-			c.fillStyle = g;
-			c.fillRect(0, 0, size, size);
-		}
-		haloCache.set(key, sprite);
+	const rr = Math.max(2, Math.round(r / 4) * 4);
+	const bitmap = sprite("h|" + color + "|" + rr, rr * 2, (c, px) => {
+		const g = c.createRadialGradient(px / 2, px / 2, 0, px / 2, px / 2, px / 2);
+		g.addColorStop(0, color);
+		g.addColorStop(1, "rgba(255,255,255,0)");
+		c.fillStyle = g;
+		c.fillRect(0, 0, px, px);
+	});
+	const a = ctx.globalAlpha;
+	ctx.globalAlpha = a * alpha;
+	ctx.drawImage(bitmap, x - r, y - r, r * 2, r * 2);
+	ctx.globalAlpha = a;
+}
+
+/** A filled sphere (see `sphere`), painted once per colours and radius, then copied. */
+export function drawSphere(ctx: CanvasRenderingContext2D, x: number, y: number, r: number, stops: [string, string, string]): void {
+	if (r <= 0)
+		return;
+	const rr = Math.max(1, Math.round(r * 2) / 2);
+	const bitmap = sprite("s|" + stops.join("|") + "|" + rr, rr * 2 + 2, (c, px) => {
+		const k = spriteScale;
+		const mid = px / 2;
+		c.fillStyle = sphere(c, mid, mid, rr * k, stops);
+		c.beginPath();
+		c.arc(mid, mid, rr * k, 0, TAU);
+		c.fill();
+	});
+	ctx.drawImage(bitmap, x - rr - 1, y - rr - 1, rr * 2 + 2, rr * 2 + 2);
+}
+
+/**
+ * A cheap fake blur for the shadow under a rounded shape: a few stacked
+ * rounded rectangles with a faint alpha. (ctx.shadowBlur is far too slow on
+ * phones to use every frame.)
+ */
+export function softShadow(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number,
+	spread: number, alpha: number, dy = 0, color = "rgb(60,40,140)"): void {
+	const a = ctx.globalAlpha;
+	ctx.fillStyle = color;
+	for (let i = 3; i >= 1; i--) {
+		const g = spread * i / 3;
+		ctx.globalAlpha = a * alpha / 3 * (4 - i) / 1.6;
+		roundedRect(ctx, x - g, y - g + dy, w + 2 * g, h + 2 * g, r + g);
+		ctx.fill();
 	}
-	ctx.save();
-	ctx.globalAlpha *= alpha;
-	ctx.drawImage(sprite, x - r, y - r, r * 2, r * 2);
-	ctx.restore();
+	ctx.globalAlpha = a;
 }
 
 /** A soft elliptical drop shadow under an object. */

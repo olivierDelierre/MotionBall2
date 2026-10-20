@@ -77,13 +77,10 @@ export function drawMap(ctx: CanvasRenderingContext2D, game) {
 			const { x: rx, y: ry } = at(x, y);
 			const here = x === cur.rx && y === cur.ry;
 			if (here) {
-				ctx.save();
-				ctx.shadowColor = "rgba(95,203,43,0.8)";
-				ctx.shadowBlur = 12;
+				halo(ctx, rx + CELL_W / 2, ry + CELL_H / 2, 34, "rgba(95,203,43,0.8)");
 				roundedRect(ctx, rx, ry, CELL_W, CELL_H, 8);
 				ctx.fillStyle = COLOR.green;
 				ctx.fill();
-				ctx.restore();
 			} else if (room.visited && inv.map) {
 				roundedRect(ctx, rx, ry, CELL_W, CELL_H, 8);
 				ctx.fillStyle = COLOR.roomOn;

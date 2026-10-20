@@ -16,7 +16,7 @@
 
 import { WIDTH as W, HEIGHT as H, BORDER as B, DOOR_SIZE as D } from "../config.js";
 import { BOUNCE } from "./physics.js";
-import { COLOR, FONT, roundedRect } from "../gfx/theme.js";
+import { COLOR, FONT, roundedRect, softShadow } from "../gfx/theme.js";
 import { app } from "../app.js";
 import { Spark } from "./entities/effects.js";
 
@@ -192,13 +192,10 @@ export class Door {
 				g.addColorStop(0, COLOR.magenta);
 				g.addColorStop(1, COLOR.amber);
 			}
-			ctx.save();
-			ctx.shadowColor = locked ? "rgba(107,75,219,0.5)" : "rgba(255,46,126,0.7)";
-			ctx.shadowBlur = 14;
+			softShadow(ctx, -w / 2, y - 4.5, w, 9, 4.5, 6, 0.55, 0, locked ? "rgb(107,75,219)" : "rgb(255,46,126)");
 			ctx.fillStyle = g;
 			roundedRect(ctx, -w / 2, y - 4.5, w, 9, 4.5);
 			ctx.fill();
-			ctx.restore();
 			if (this.state === "closed" && room && room.redsTotal > 0 && room.redsLeft > 0)
 				orbCounter(ctx, y + 22, -f.angle, room.redsTotal - room.redsLeft, room.redsTotal);
 		}
@@ -212,12 +209,10 @@ function orbCounter(ctx: CanvasRenderingContext2D, y: number, upright: number, t
 	ctx.save();
 	ctx.translate(0, y);
 	ctx.rotate(upright);   // (the door's frame is turned: keep the text upright)
-	ctx.shadowColor = "rgba(60,40,140,0.25)";
-	ctx.shadowBlur = 8;
+	softShadow(ctx, -w / 2, -h / 2, w, h, h / 2, 5, 0.3, 2);
 	roundedRect(ctx, -w / 2, -h / 2, w, h, h / 2);
 	ctx.fillStyle = "rgba(255,255,255,0.95)";
 	ctx.fill();
-	ctx.shadowBlur = 0;
 	ctx.strokeStyle = "rgba(180,83,9,0.45)";
 	ctx.lineWidth = 1;
 	ctx.stroke();

@@ -3,7 +3,7 @@
  * pincers and a mouth that sucks. All the poses come from the boss's state.
  */
 
-import { COLOR, TAU, circlePath, sphere, halo, dropShadow } from "./theme.js";
+import { COLOR, TAU, circlePath, sphere, halo, dropShadow, drawSphere } from "./theme.js";
 
 export interface OctopusPose {
 	anim: string;          // sleep, normal, suck, eat, spit, eyeless, newEye, death
@@ -105,9 +105,7 @@ export function drawOctopus(ctx: CanvasRenderingContext2D, x: number, y: number,
 	if (!socket && p.anim !== "death") {
 		const r = 17 * grow;
 		const asleep = p.anim === "sleep";
-		ctx.fillStyle = sphere(ctx, 0, -8, r, ["#FFFFFF", "#FFFFFF", "#D8D0F5"]);
-		circlePath(ctx, 0, -8, r);
-		ctx.fill();
+		drawSphere(ctx, 0, -8, r, ["#FFFFFF", "#FFFFFF", "#D8D0F5"]);
 		const px = p.pupilX * 0.3, py = p.pupilY * 0.3;
 		ctx.fillStyle = COLOR.ink;
 		circlePath(ctx, px, -8 + py, 7.5 * grow);
@@ -137,9 +135,7 @@ export function drawThrownEye(ctx: CanvasRenderingContext2D, x: number, y: numbe
 	ctx.translate(x, y);
 	ctx.rotate(time * 6);
 	halo(ctx, 0, 0, 34, "rgba(255,77,94,0.5)");
-	ctx.fillStyle = sphere(ctx, 0, 0, 17, ["#FFFFFF", "#FFFFFF", red > 0 ? "#FFB3BB" : "#D8D0F5"]);
-	circlePath(ctx, 0, 0, 17);
-	ctx.fill();
+	drawSphere(ctx, 0, 0, 17, ["#FFFFFF", "#FFFFFF", red > 0 ? "#FFB3BB" : "#D8D0F5"]);
 	ctx.fillStyle = COLOR.red;
 	circlePath(ctx, 5, 0, 8);
 	ctx.fill();
@@ -151,7 +147,5 @@ export function drawThrownEye(ctx: CanvasRenderingContext2D, x: number, y: numbe
 
 /** A blob of the octopus's death. */
 export function drawBlob(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number): void {
-	ctx.fillStyle = sphere(ctx, x, y, 20 * scale, ["#C8A8FF", "#8A52F0", "#5B2FC8"]);
-	circlePath(ctx, x, y, 20 * scale);
-	ctx.fill();
+	drawSphere(ctx, x, y, 20 * scale, ["#C8A8FF", "#8A52F0", "#5B2FC8"]);
 }
