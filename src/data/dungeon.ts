@@ -27,7 +27,7 @@ import LEVEL_FILES from "./levels.generated.js";
 
 const POS_BITS = 8;
 
-export function makeRoom(type, content, exits, items) {
+export function makeRoom(type, content, exits, items = []) {
 	return {
 		type,
 		content,
@@ -57,7 +57,7 @@ export class Dungeon {
 		return (this.rooms[x] && this.rooms[x][y]) || null;
 	}
 
-	ensure() { }
+	ensure(_column?: number) { }
 
 	/** Every existing room. */
 	*allRooms() {

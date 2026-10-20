@@ -373,8 +373,8 @@ export class Wind extends Power {
 		}
 
 		const ball = game.ball;
-		let dx = this.x - ball.x;
-		let dy = this.y - ball.y;
+		const dx = this.x - ball.x;
+		const dy = this.y - ball.y;
 		const d = Math.max(10, Math.hypot(dx, dy));
 		if (d < this.radius) {
 			// (original : strength / sqrt(distance) px per frame^2)

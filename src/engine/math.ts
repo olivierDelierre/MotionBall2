@@ -76,7 +76,7 @@ export const ease = {
 };
 
 /** Formats a number of seconds as m:ss or mm:ss:cc. */
-export function formatTime(seconds, withHundredths) {
+export function formatTime(seconds: number, withHundredths = false) {
 	const s = Math.max(0, seconds);
 	const m = Math.floor(s / 60);
 	const sec = Math.floor(s) % 60;

@@ -229,7 +229,7 @@ test("the red ball attracts the red pastilles", () => {
 });
 
 test("time pastilles : +10 s, +2 s in Classique, -1 s on the chronometer", () => {
-	for (const [mode, delta] of [[Mode.CHALLENGE, 10], [Mode.CLASSIC, 2], [Mode.COURSE, -1]]) {
+	for (const [mode, delta] of [[Mode.CHALLENGE, 10], [Mode.CLASSIC, 2], [Mode.COURSE, -1]] as [any, any][]) {
 		setup();
 		const g = newGame(mode);
 		testRoom(g, [item(Item.BLUE, 305, 205, 24)]);
@@ -373,7 +373,7 @@ test("a bumper throws the ball back hard", () => {
 });
 
 test("a death bumper kills, except the metal ball", () => {
-	for (const [type, dies] of [[BallType.YELLOW, true], [BallType.METAL, false]]) {
+	for (const [type, dies] of [[BallType.YELLOW, true], [BallType.METAL, false]] as [any, any][]) {
 		setup();
 		const g = newGame(Mode.CHALLENGE);
 		testRoom(g, [item(Item.DEATH, 400, 205, 40)]);
@@ -387,7 +387,7 @@ test("a death bumper kills, except the metal ball", () => {
 });
 
 test("a clock bumper costs 5 seconds (adds 5 to the chronometer)", () => {
-	for (const [mode, sign] of [[Mode.CHALLENGE, -1], [Mode.COURSE, 1]]) {
+	for (const [mode, sign] of [[Mode.CHALLENGE, -1], [Mode.COURSE, 1]] as [any, any][]) {
 		setup();
 		const g = newGame(mode);
 		testRoom(g, [item(Item.CLOCK, 400, 205, 64)]);
@@ -401,7 +401,7 @@ test("a clock bumper costs 5 seconds (adds 5 to the chronometer)", () => {
 });
 
 test("a magnet attracts the ball, but not the metal one", () => {
-	for (const [type, attracted] of [[BallType.YELLOW, true], [BallType.METAL, false]]) {
+	for (const [type, attracted] of [[BallType.YELLOW, true], [BallType.METAL, false]] as [any, any][]) {
 		setup();
 		const g = newGame(Mode.CHALLENGE);
 		testRoom(g, [item(Item.MAGNET, 420, 205, 40)]);
@@ -413,10 +413,10 @@ test("a magnet attracts the ball, but not the metal one", () => {
 });
 
 test("the green ball breaks the green blocks, the others bounce on them", () => {
-	for (const [type, breaks] of [[BallType.YELLOW, false], [BallType.GREEN, true]]) {
+	for (const [type, breaks] of [[BallType.YELLOW, false], [BallType.GREEN, true]] as [any, any][]) {
 		setup();
 		const g = newGame(Mode.CHALLENGE);
-		const data = tileItem(Item.BLOCK, 8, 4);
+		const data: any = tileItem(Item.BLOCK, 8, 4);
 		const room = testRoom(g, [data]);
 		g.ball.setType(type);
 		g.ball.placeAt(tileCentre(8, 4).x - 40, tileCentre(8, 4).y);
@@ -585,7 +585,7 @@ test("the result gives the explored part of the dungeon", () => {
 // ----- robustness -----
 
 test("random play in every mode : no crash, the ball stays sane", () => {
-	for (const [mode, param] of [[Mode.CHALLENGE, 0], [Mode.ADVENTURE, 2], [Mode.COURSE, 3], [Mode.CLASSIC, 0], [Mode.TUTORIAL, 0]]) {
+	for (const [mode, param] of [[Mode.CHALLENGE, 0], [Mode.ADVENTURE, 2], [Mode.COURSE, 3], [Mode.CLASSIC, 0], [Mode.TUTORIAL, 0]] as [any, any][]) {
 		setup(7);
 		const g = newGame(mode, param);
 		let rooms = 0;

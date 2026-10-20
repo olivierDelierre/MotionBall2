@@ -36,7 +36,7 @@ export function roundRectPath(ctx, x, y, w, h, r) {
  * Draws a text centred on (x, y) ; "\n" makes several lines.
  * options : { size, color, outline, align, weight, baseline }
  */
-export function text(ctx, str, x, y, options = {}) {
+export function text(ctx, str, x, y, options: any = {}) {
 	const size = options.size || 16;
 	ctx.font = (options.weight || "700") + " " + size + "px " + FONT;
 	ctx.textAlign = options.align || "center";

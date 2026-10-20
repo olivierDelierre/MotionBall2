@@ -14,12 +14,13 @@
     "levels": "node tools/build_levels.js",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:browser": "node tests/browser/smoke.mjs"
+    "test:browser": "vite build && node tests/browser/smoke.mjs"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
     "@types/node": "^26.6.5",
     "eslint": "^9.39.5",
+    "globals": "^17.13.0",
     "prettier": "^3.9.10",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.72.0",

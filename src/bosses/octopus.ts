@@ -124,8 +124,12 @@ export class Octopus extends Boss {
 			this.play("normal");
 			this.blink = 1;
 		}
-		if (s.time <= 0)
-			s.then === "attack" ? this.nextPattern(game) : s.then(game);
+		if (s.time <= 0) {
+			if (s.then === "attack")
+				this.nextPattern(game);
+			else
+				s.then(game);
+		}
 	}
 
 	/** The next pattern : jumps and attacks in turn. */
@@ -312,7 +316,7 @@ export class Octopus extends Boss {
 		const eye = this.eye;
 		const ball = game.ball;
 
-		let d2 = dist2(ball.x, ball.y, eye.x, eye.y);
+		const d2 = dist2(ball.x, ball.y, eye.x, eye.y);
 		if (!ball.falling && d2 < 38 * 38) {
 			app.audio.play("wall");
 			const d = Math.sqrt(d2) || 1;

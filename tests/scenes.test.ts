@@ -13,7 +13,7 @@ import { PlayScene } from "../src/scenes/play.js";
 import { Mode, RoomType } from "../src/data/enums.js";
 
 /** Runs a scene for `seconds`, drawing it every step. */
-function play(scene, seconds, each) {
+function play(scene, seconds: number, each?: (i: number) => void) {
 	const ctx = fakeContext();
 	const steps = Math.round(seconds / STEP);
 	for (let i = 0; i < steps; i++) {
@@ -198,7 +198,7 @@ test("drawing : every menu page", () => {
 });
 
 test("drawing : every mode, while playing, scrolling, paused (with the map) and at the end", () => {
-	for (const [mode, param] of [[Mode.CHALLENGE, 0], [Mode.ADVENTURE, 1], [Mode.COURSE, 0], [Mode.CLASSIC, 0], [Mode.TUTORIAL, 0]]) {
+	for (const [mode, param] of [[Mode.CHALLENGE, 0], [Mode.ADVENTURE, 1], [Mode.COURSE, 0], [Mode.CLASSIC, 0], [Mode.TUTORIAL, 0]] as [any, any][]) {
 		setup(3);
 		const scene = new PlayScene(mode, param);
 		scene.enter();
@@ -227,7 +227,7 @@ test("drawing : every mode, while playing, scrolling, paused (with the map) and 
 });
 
 test("drawing : every boss, through its fight", () => {
-	for (const [mode, param] of [[Mode.CHALLENGE, 0], [Mode.ADVENTURE, 0], [Mode.ADVENTURE, 1], [Mode.ADVENTURE, 2], [Mode.ADVENTURE, 3], [Mode.ADVENTURE, 4]]) {
+	for (const [mode, param] of [[Mode.CHALLENGE, 0], [Mode.ADVENTURE, 0], [Mode.ADVENTURE, 1], [Mode.ADVENTURE, 2], [Mode.ADVENTURE, 3], [Mode.ADVENTURE, 4]] as [any, any][]) {
 		setup(11);
 		const scene = new PlayScene(mode, param);
 		scene.enter();

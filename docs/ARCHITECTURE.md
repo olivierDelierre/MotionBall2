@@ -9,9 +9,9 @@ doors, find the coloured balls, beat the boss).
 
 - **Modules with one job.** Each file is an ES module with a short header
   comment saying what it is for. Nothing is global, except the few shared
-  services in `app.js`.
+  services in `app.ts`.
 - **The rules live in data.** Everything that differs between the game modes is
-  a field of `game/modes.js`; the game code asks `game.rules.xxx` instead of
+  a field of `game/modes.ts`; the game code asks `game.rules.xxx` instead of
   testing the mode.
 - **Entities draw and update themselves.** A bumper, a pastille, a door or a
   boss is an object with `update(dt, game)` and `render(ctx, game)`. The room
@@ -20,103 +20,74 @@ doors, find the coloured balls, beat the boss).
   seconds, speeds are pixels per second. Values that come from the original
   game (which counted in pixels per frame at 40 frames per second) are
   converted, and the comment gives the original value.
-- **The original art, the rewrite's code.** Everything on screen is an
-  original symbol of `mb2.fla` (converted from its XFL export, see
-  [XFL_INTEGRATION.md](XFL_INTEGRATION.md)), played by a small timeline player
-  (`gfx/xfl/clip.js`). The game code drives the symbols the way the original
-  ActionScript did (`gotoAndPlay("hit")`, a needle's rotation, a text), but the
-  rules are the rewrite's own code : the original ActionScript (`mb2/*.as`, see the README) is
-  a reference, it is not run.
+- **Vector art, drawn from state.** Everything on screen is drawn with canvas
+  paths (`gfx/sprites.ts`, `gfx/*_art.ts`) in the palette of `gfx/theme.ts`. A
+  sprite is a function of the entity's state and of time (a `hitAge`, a
+  `leave` amount, `app.time`): there are no timelines, so every animation is
+  smooth at any frame rate. The original ActionScript (`mb2/*.as`, see the
+  README) is a reference, it is not run.
 
 ## Layout
 
 ```
-index.html            the page (loads dist/motionball2.js)
-package.json          esbuild ; scripts build / serve / test / levels
-assets/xfl           the symbols of mb2.fla and title.fla (JSON) and their bitmaps (generated)
-assets/snd           the original sounds
-dist/                 the bundle built from src/ (committed : the game runs without a build)
-xfl/                  the XFL exports of the original .fla files (converted by tools/xfl/convert.js)
+index.html            the page (Vite entry: loads src/main.ts)
+package.json          scripts dev / build / test / lint / levels
+vite.config.ts        Vite and Vitest
+tsconfig.json         TypeScript (checked by `npm run typecheck`)
+public/snd            the original sounds
 dungeon/              the hand-made dungeons of the original level editor
-tools/build_levels.js packs dungeon/*.txt into src/data/levels.generated.js
-tools/xfl/           convert.js : xfl/ (XFL) -> assets/xfl ; gallery.js : xfl-gallery.html
-tests/                Node tests (see "Tests" below) ; browser/smoke.js : Chromium smoke test
+tools/build_levels.js packs dungeon/*.txt into src/data/levels.generated.ts
+tests/                Vitest tests (see "Tests" below) ; browser/smoke.mjs : Chromium smoke test
 
 src/
-  main.js             entry point : creates the services, loads, starts the loop
-  app.js              the shared services (screen, input, audio, images, save, scenes)
-  config.js           sizes, physics tuning, ball specs
-  sounds.js           sound names -> files, music layers
-  progress.js         saved settings, unlocks and records
-  achievements.js     the achievements : the list, what unlocks them, the banner
+  main.ts             entry point : creates the services, loads, starts the loop
+  style.css           the page
+  app.ts              the shared services (screen, input, audio, save, scenes, time, alpha)
+  config.ts           sizes, physics tuning, ball specs
+  sounds.ts           sound names -> files, music layers
+  progress.ts         saved settings, unlocks and records
+  achievements.ts     the achievements : the list, what unlocks them, the banner
 
   engine/             game-independent code
-    loop.js           fixed-step main loop
-    screen.js         canvas sizing, game coordinates
-    input.js          keyboard / gamepad / touch -> actions and a direction
-    audio.js          effects, cross-faded music, layered music (Web Audio or <audio>)
-    assets.js         image loading (the bitmaps of the symbols)
-    storage.js        localStorage with fallbacks
-    scenes.js         current screen + fade transitions
-    math.js           helpers (angles, frame-rate independent decay, random, easing)
+    loop.ts           fixed-step main loop, passes the interpolation factor to the draw
+    screen.ts         canvas sizing, game coordinates
+    input.ts          keyboard / gamepad / touch -> actions and a direction
+    audio.ts          effects, cross-faded music, layered music (Web Audio or <audio>)
+    storage.ts        localStorage with fallbacks
+    scenes.ts         current screen + fade transitions
+    math.ts           helpers (angles, frame-rate independent decay, random, easing)
 
-  data/               the levels
-    enums.js          the values stored in the level data (items, rooms, exits...)
-    bitcodec.js       decoder of the Motion Twin bit strings
-    dungeon.js        the dungeon model, and the hand-made dungeons reader
-    levels.generated.js   the hand-made dungeons (generated, do not edit)
-    generator/        random dungeons (Challenge, Classique), after mb2gen (OCaml)
-      util.js         Retry, random helpers, the item shapes of mb2gen/bumpers.txt
-      map.js          the 8 x 8 map : rooms, exits, balls, bonuses
-      rooms.js        the content of a room
-      index.js        generateChallenge(), ClassicDungeon
+  data/               the levels (enums, bit codec, dungeon model, random generators)
 
   game/               a game being played
-    game.js           the session : rooms, time, lives, room changes, end
-    modes.js          the rules of each mode
-    room.js           builds a room from its data, holds its entities, draws it
-    doors.js          the border and its four doors
-    ball.js           the player's ball
-    physics.js        collision shapes and the ball's bounces
-    entity.js         Entity / Effect base classes, drawing layers
-    inventory.js      balls, keys, map, radar
-    hud.js            time, laps, balls left
-    entities/         what a room contains
-      bumpers.js      normal, clock, death, magnet, invisible bumpers
-      blocks.js       green blocks, pink / blue blocks and their switch
-      pickups.js      pastilles, balls, item boxes, hatch, teleports
-      zappers.js      laser posts and beams (checkpoints in Course mode)
-      effects.js      symbols that play once (sparks, debris, laser flash)
+    game.ts           the session : rooms, time, lives, room changes, end, drawing order
+    modes.ts          the rules of each mode
+    room.ts           builds a room from its data, holds its entities, draws the floor
+    doors.ts          the floor outline and its four doors
+    ball.ts           the player's ball
+    physics.ts        collision shapes and the ball's bounces
+    entity.ts         Entity / Effect base classes, drawing layers, interpolated position
+    inventory.ts      balls, keys, map, radar
+    hud.ts            the band above the room, the ball and key icons
+    entities/         bumpers, blocks, pickups (and teleports), zappers, effects
 
-  bosses/
-    index.js          which boss for which dungeon
-    common.js         base class, red "hurt" colour, breaking floor
-    octopus.js        Challenge boss
-    snake.js          the 4 elemental snakes (adventures 1-4)
-    powers.js         water, fire, earth, wind powers
-    tourneboule.js    final boss (adventure 5)
+  bosses/             octopus, snakes, powers, Tourneboule (state machines)
 
-  gfx/
-    xfl/              the original symbols
-      index.js        clip(name), drawClip, symbolCells (the original item sizes)
-      library.js      the converted library : symbols, shapes, bitmaps
-      clip.js         Clip : a playing symbol instance (timeline, scripts, nested clips)
-      render.js       shapes, texts, masks, colour transforms, tweens
-    draw.js           text and shape helpers (for what the symbols don't cover)
-    ui.js             the pause buttons, the "pop" of the end panel
+  gfx/                drawing
+    theme.ts          palette, font, gradients, halos, shadows
+    sprites.ts        everything in a room, and the ball
+    octopus_art.ts, snake_art.ts, powers_art.ts, tourneboule_art.ts   the bosses
+    draw.ts, ui.ts    text, cards, buttons, sliders, panels, the backdrop
 
-  scenes/
-    title.js          the original intro (Intro.as), "press a key"
-    menu.js           the ring of balls of the original menu (Menu.as)
-    widgets.js        button navigation (mouse, touch, keyboard, gamepad)
-    play.js           runs a Game ; pause and end-of-game panels
-    achievements.js   the achievements screen
-    map_view.js       the dungeon map of the pause ("carte", "room")
+  scenes/             title, menu, play (pause and end panels), map, achievements
 ```
+
+The room is 610 x 410 pixels; the canvas is 610 x 482: a HUD band of 72 pixels
+on top, and the room under it (`Game.render` translates by `HUD_HEIGHT`).
 
 ## The main loop
 
-`engine/loop.js` runs the simulation in fixed steps of 1/120 s and draws once
+`engine/loop.ts` runs the simulation in fixed steps of 1/120 s and draws once
 per displayed frame:
 
 ```
@@ -146,15 +117,15 @@ TitleScene -> MenuScene -> PlayScene -> (end panel) -> MenuScene
 
 `PlayScene` owns a `Game` and two overlays: the pause (with the map when the
 map or the radar was found) and the end-of-game panel, which also saves the
-records (`progress.js`).
+records (`progress.ts`).
 
 ## A game
 
-`Game` (`game/game.js`) holds:
+`Game` (`game/game.ts`) holds:
 
 | field | |
 | --- | --- |
-| `rules` | the mode's rules (`modes.js`) |
+| `rules` | the mode's rules (`modes.ts`) |
 | `dungeon` | the level data, modified while playing (opened doors, destroyed blocks...) |
 | `room` | the `Room` being played |
 | `ball` | the player's `Ball` (it lives across rooms) |
@@ -188,7 +159,7 @@ pastilles back).
 
 ## Rooms
 
-`Room` (`game/room.js`) turns a room of the data into entities:
+`Room` (`game/room.ts`) turns a room of the data into entities:
 
 - level items (`{ type, x, y }` in 4 x 4 pixel cells, top-left corner) become
   entities centred on their symbol, sized like the original did it
@@ -200,33 +171,34 @@ pastilles back).
 
 Drawing, back to front: the `background` symbol, holes (the `ground` symbol
 clipped to the hole tiles, with a back wall on their top edge), block shadows,
-then the entities sorted by layer (`entity.js` `Layer`), their shadows first,
+then the entities sorted by layer (`entity.ts` `Layer`), their shadows first,
 and finally the `border` and the `door` symbols on top.
 
-## The original art
+## Drawing and smooth motion
 
-`gfx/xfl/` plays the symbols converted from the XFL export of `mb2.fla`
-(`npm run xfl`, see [XFL_INTEGRATION.md](XFL_INTEGRATION.md)). An entity keeps
-a `Clip` (`clip("bnormal")`), updates it (`art.update(dt)`, 40 frames per
-second like the original) and draws it (`drawClip(ctx, art, x, y)`). The game
-drives it like the original ActionScript : `gotoAndPlay("hit")`,
-`art.set("aig", { rotation })`, `art.setText("tview_txt", "123")`,
-`art.child("ball").gotoAndStop(type)` ; the frame scripts of the symbols run
-(stops, loops, `removeMovieClip`), and their calls reach the game through
-`art.on = event => ...` (the final boss follows its `kataDone` / `animDone`
-like BossTB.as).
+**Sprites are functions.** `gfx/sprites.ts` draws each thing from its state and
+a time: `drawBumper(ctx, x, y, r, hit)`, `drawOrb(ctx, x, y, kind, time, leave)`,
+`drawGear(ctx, x, y, size, angle)`... An entity keeps the few numbers it
+needs (`hitAge` since its last hit, `leave` while it is taken, `lift` of a
+block) and advances them with `dt`; idle motion (the gear turning, the pulse of
+a time orb) reads `app.time`. Nothing is quantised to a frame rate.
 
-**Smooth on any screen.** The symbols' timelines, the intro and the menu keep
-the original 40 frames per second (their scripts and tuning are per frame),
-but they are *drawn* between their last two frames: `Clip.drawFrame()` gives a
-fractional frame, so motion tweens are interpolated at the display rate (not
-across a stop or a jump of the timeline), and the intro, the menu ring and the
-earth power's vine keep their previous step's places to draw in between.
-Only the frame-by-frame drawings of the original stay at 40 per second.
+**Interpolation.** The simulation runs at 120 steps per second, the screen at
+whatever it likes. `Loop` computes how far the frame is between the last two
+steps (`alpha`, 0..1) and stores it in `app.alpha`. Moving entities remember
+their previous position (`Entity.snapshot()`, called by the room before each
+update) and draw at `drawX` / `drawY`, which blend the two. A jump of more than
+40 pixels (a teleport, a respawn) is not blended. The room scroll does the
+same with its progress. UI motion (cards growing, the title) uses real time
+and a frame-rate independent decay (`1 - exp(-dt * k)`).
+
+**The bosses.** Their poses come from their state machines; where the original
+timeline called back into the code (Tourneboule's `kataDone` / `animDone`) the
+durations are kept in a table (`KATA_TIMES`).
 
 ## Physics
 
-The ball is a circle; everything solid has a shape (`game/physics.js`):
+The ball is a circle; everything solid has a shape (`game/physics.ts`):
 `circle` (bumpers, posts), `box` (blocks, border, door openings) or `arc` (the
 rounded inside corners of the room).
 
@@ -244,14 +216,14 @@ pastilles, balls, the hatch, teleports, laser beams.
 away from the edges that touch the floor; once it is far enough from those
 edges it falls. The blue ball jumps instead.
 
-**Ball specs** (`config.js` `BALLS`): acceleration, inertia (the speed is
+**Ball specs** (`config.ts` `BALLS`): acceleration, inertia (the speed is
 multiplied by it every 1/40 s: `decay(inertia, dt)`), maximum speed. The metal
 ball is slow and heavy, the orange one fast, etc.
 
 ## Doors
 
 Each side of the border is made of two fixed boxes around the opening and a
-`Door` (`game/doors.js`) filling it. A door is solid unless it is `open`,
+`Door` (`game/doors.ts`) filling it. A door is solid unless it is `open`,
 `opening` or `hidden`. States: `wall` (no door), `hidden`, `closed` (opens when
 the red pastilles are taken, or with a key), `locked` (a one-way door seen from
 the wrong side), `opening`, `open`, `closing`. Opening a door writes `Exit.OPEN`
@@ -259,7 +231,7 @@ into the dungeon data, so it stays open.
 
 ## Bosses
 
-A boss is an entity of the `BOSS` layer, created by `bosses/index.js` when the
+A boss is an entity of the `BOSS` layer, created by `bosses/index.ts` when the
 ball is fully inside the boss room (the doors close). The game calls its
 `update(dt, game)` and adds its colliders if it has some; it calls
 `game.bossBeaten()` when its death animation is over. While a boss dies,
@@ -272,7 +244,7 @@ and one `update...` method per state. For example the octopus:
 sleep -> jumps <-> (big jump | suck -> spit | shout | throw eye) -> ... -> dying
 ```
 
-The elemental powers (`powers.js`) are entities added to the room; the boss
+The elemental powers (`powers.ts`) are entities added to the room; the boss
 keeps a list of them to limit how many are active. Some effects tuned "per
 frame" in the original (the earth vine, the water trail) run at 40 Hz through a
 small `FrameClock`, whatever the simulation rate.
@@ -283,23 +255,23 @@ small `FrameClock`, whatever the simulation rate.
   `dungeon/*.txt` files of the original level editor, packed into
   `levels.generated.js` by `npm run levels`. Each line is a room: `NONE`,
   `DATA=<bits>` (an editor room), `START=<bits>`, `ITEM=<name>`, `END`.
-  `data/dungeon.js` decodes them.
+  `data/dungeon.ts` decodes them.
 - **Random dungeons** (Challenge, Classique) are generated with the rules of
   the original OCaml tool. A failed generation step throws `Retry` and is done
-  again (see `generator/util.js`). Two loops of the original could never end;
-  they are bounded here (see the comments in `rooms.js` and `index.js`).
+  again (see `generator/util.ts`). Two loops of the original could never end;
+  they are bounded here (see the comments in `rooms.ts` and `index.ts`).
 
 ## Audio
 
-`engine/audio.js` plays effects (`app.audio.play("red")`), a music with
+`engine/audio.ts` plays effects (`app.audio.play("red")`), a music with
 cross-fades (`playMusic`), and the **layered** in-game music: 5 loops of the
 same length play together and in sync, only one is audible; each new ball
 colour found cross-fades to a richer one (`setLayer`). Music and effects have
-separate volumes (the options). The names of the sounds are in `sounds.js`.
+separate volumes (the options). The names of the sounds are in `sounds.ts`.
 
 ## Saving
 
-`progress.js` keeps, in `localStorage` (key `motionball2.rewrite`): the settings,
+`progress.ts` keeps, in `localStorage` (key `motionball2.rewrite`): the settings,
 the adventures won (the 5th opens after the 4 others), the unlocked courses
 and their 3 best times (starting with 3 "CPU" times), the best Challenge score
 and Classique level.
@@ -308,7 +280,7 @@ and Classique level.
 
 The game logic doesn't need the browser : it only draws through the canvas
 context it is given, and reaches the sound, the input and the images through
-`app`. The tests (`npm test`) replace those with fakes (`tests/helpers.js`):
+`app`. The tests (`npm test`) replace those with fakes (`tests/helpers.ts`):
 
 - `setup(seed)` installs a fake input (the test sets `app.input.dir` and
   triggers actions), a fake audio recording the sounds, no images, a fake
@@ -319,22 +291,21 @@ context it is given, and reaches the sound, the input and the images through
   (items placed by their centre with `item()` / `tileItem()`).
 
 The drawing code is run on the fake context too (`scenes.test.js`), so an error
-in it fails the tests even though nothing is drawn. `tests/browser/smoke.js`
+in it fails the tests even though nothing is drawn. `tests/browser/smoke.mjs`
 checks the real page in Chromium.
 
 ## Common tasks
 
 | to... | look at |
 | --- | --- |
-| tune the ball | `config.js` (`BALLS`, `PHYSICS`) |
-| change a mode's rules (time, lives...) | `game/modes.js` |
-| change a bumper's bounce | `game/physics.js` `BOUNCE` |
-| add an item type | `data/enums.js`, `Room.addItem` + `ITEM_SYMBOLS` in `game/room.js`, a class in `game/entities/` |
+| tune the ball | `config.ts` (`BALLS`, `PHYSICS`) |
+| change a mode's rules (time, lives...) | `game/modes.ts` |
+| change a bumper's bounce | `game/physics.ts` `BOUNCE` |
+| add an item type | `data/enums.ts`, `Room.addItem` + `ITEM_SYMBOLS` in `game/room.ts`, a class in `game/entities/` |
 | change what a boss does | its state methods in `bosses/` |
-| change a sound | `sounds.js` |
+| change a sound | `sounds.ts` |
 | add a screen | a scene in `scenes/`, then `app.scenes.goto(new MyScene())` |
 | edit a hand-made dungeon | `dungeon/*.txt`, then `npm run levels` and `npm run build` |
 
-After a change in `src/`, run `npm test` and `npm run build` (the page loads
-`dist/`). A new behaviour deserves a test in `tests/game.test.js` : most are a
+After a change in `src/`, run `npm test` and `npm run typecheck`. A new behaviour deserves a test in `tests/game.test.js` : most are a
 few lines with `testRoom`.

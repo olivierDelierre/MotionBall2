@@ -14,7 +14,7 @@ import { Mode } from "../src/data/enums.js";
 /** A localStorage in memory. */
 function fakeLocalStorage() {
 	const data = new Map();
-	globalThis.localStorage = {
+	(globalThis as any).localStorage = {
 		getItem: k => data.has(k) ? data.get(k) : null,
 		setItem: (k, v) => data.set(k, String(v)),
 		removeItem: k => data.delete(k)

@@ -15,26 +15,26 @@ import { angleDiff, decay, formatTime, clamp, weightedIndex, perFrameChance } fr
 
 /** An input bound to a fake window, canvas and gamepad. */
 function makeInput() {
-	globalThis.window = new EventTarget();
+	(globalThis as any).window = new EventTarget();
 	const pad = { connected: false, buttons: [], axes: [0, 0] };
 	for (let i = 0; i < 16; i++)
 		pad.buttons.push({ pressed: false });
 	Object.defineProperty(globalThis, "navigator", { value: { getGamepads: () => [pad] }, configurable: true });
-	globalThis.performance = globalThis.performance || { now: () => Date.now() };
+	(globalThis as any).performance = globalThis.performance || { now: () => Date.now() };
 
-	const canvas = new EventTarget();
+	const canvas: any = new EventTarget();
 	canvas.setPointerCapture = () => { };
 	const screen = { canvas, toGame: (x, y) => ({ x, y }) };
 	const input = new Input(screen);
 
 	const key = (type, code, repeat = false) => {
-		const e = new Event(type);
+		const e: any = new Event(type);
 		e.code = code;
 		e.repeat = repeat;
 		window.dispatchEvent(e);
 	};
 	const pointer = (type, x, y, pointerType = "touch", id = 1) => {
-		const e = new Event(type);
+		const e: any = new Event(type);
 		Object.assign(e, { clientX: x, clientY: y, pointerType, pointerId: id });
 		canvas.dispatchEvent(e);
 	};
@@ -204,8 +204,8 @@ test("audio : music and effects have their own volume, while switched on", () =>
 test("loop : fixed steps, whatever the frame rate ; a long pause is not caught up", () => {
 	let now = 0;
 	let callback = null;
-	globalThis.performance = { now: () => now };
-	globalThis.requestAnimationFrame = fn => {
+	(globalThis as any).performance = { now: () => now };
+	(globalThis as any).requestAnimationFrame = fn => {
 		callback = fn;
 	};
 	let steps = 0;

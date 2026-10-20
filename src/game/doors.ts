@@ -200,17 +200,18 @@ export class Door {
 			ctx.fill();
 			ctx.restore();
 			if (this.state === "closed" && room && room.redsTotal > 0 && room.redsLeft > 0)
-				orbCounter(ctx, y + 22, room.redsTotal - room.redsLeft, room.redsTotal);
+				orbCounter(ctx, y + 22, -f.angle, room.redsTotal - room.redsLeft, room.redsTotal);
 		}
 		ctx.restore();
 	}
 }
 
 /** The pill showing a padlock and how many orbs are taken: "2/6". */
-function orbCounter(ctx: CanvasRenderingContext2D, y: number, taken: number, total: number): void {
+function orbCounter(ctx: CanvasRenderingContext2D, y: number, upright: number, taken: number, total: number): void {
 	const w = 58, h = 24;
 	ctx.save();
 	ctx.translate(0, y);
+	ctx.rotate(upright);   // (the door's frame is turned: keep the text upright)
 	ctx.shadowColor = "rgba(60,40,140,0.25)";
 	ctx.shadowBlur = 8;
 	roundedRect(ctx, -w / 2, -h / 2, w, h, h / 2);

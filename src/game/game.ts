@@ -77,7 +77,7 @@ export class Game {
 		this.stats = { lost: 0 };        // for the achievements
 
 		// the first room
-		let x = this.dungeon.start.x;
+		const x = this.dungeon.start.x;
 		let y = this.dungeon.start.y;
 		if (this.rules.randomStartRow)
 			y = randInt(this.dungeon.height);
@@ -111,7 +111,7 @@ export class Game {
 	// ----- actions for the entities -----
 
 	/** Tells the achievements what happened (see achievements.js). */
-	achieve(event, data) {
+	achieve(event, data?) {
 		if (app.achievements)
 			app.achievements.event(event, this, data);
 	}

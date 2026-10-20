@@ -161,7 +161,7 @@ export function fakeContext() {
 }
 
 function installFakeDocument() {
-	globalThis.document = {
+	(globalThis as any).document = {
 		createElement: () => ({ width: 0, height: 0, getContext: () => fakeContext() })
 	};
 }
@@ -181,18 +181,17 @@ export function setup(seed = 1) {
 // ----- games -----
 
 /** Starts a game ; `game.log` records its events. */
-export function newGame(mode, param = 0) {
+export function newGame(mode: any, param = 0): Game & { log: any } {
 	const log = { pauses: [], ends: [] };
-	const game = new Game(mode, param, {
+	const game: Game = new Game(mode, param, {
 		onPause: tab => log.pauses.push(tab),
 		onEnd: result => log.ends.push(result)
 	});
-	game.log = log;
-	return game;
+	return Object.assign(game, { log });
 }
 
 /** Runs the game for `seconds` of game time ; `each(game)` is called before each step. */
-export function run(game, seconds, each) {
+export function run(game, seconds: number, each?: (game: any, step: number) => void) {
 	const steps = Math.round(seconds / STEP);
 	for (let i = 0; i < steps; i++) {
 		if (each)
@@ -221,7 +220,7 @@ export function runUntil(game, condition, max = 10) {
  * An item of the level data centred on (x, y) pixels (the data uses the
  * top-left cell). `size` is the size of the item in pixels (see room.js SIZES).
  */
-export function item(type, x, y, size) {
+export function item(type: number, x: number, y: number, size = 0) {
 	return { type, x: Math.round((x - size / 2) / CELL), y: Math.round((y - size / 2) / CELL) };
 }
 
@@ -235,7 +234,7 @@ export function tileItem(type, tx, ty) {
  * room has `items` and `exits` (left, right, up, down), surrounded by empty
  * rooms with doors. The ball is placed in the middle.
  */
-export function testRoom(game, items, exits = [Exit.DOOR, Exit.DOOR, Exit.DOOR, Exit.DOOR], type = RoomType.NORMAL) {
+export function testRoom(game, items, exits: number[] = [Exit.DOOR, Exit.DOOR, Exit.DOOR, Exit.DOOR], type: number = RoomType.NORMAL) {
 	const d = new Dungeon(3, 3);
 	for (let x = 0; x < 3; x++)
 		for (let y = 0; y < 3; y++)

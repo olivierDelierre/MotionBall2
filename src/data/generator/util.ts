@@ -79,7 +79,7 @@ const SHAPES_DATA = "itaZgmzqyWaaFG_X_5_5_5_5_5_4_WFGaceaaaddaF-b_4h_G_-h_-_____
 
 function readLayout() {
 	const r = new BitReader(SHAPES_DATA);
-	const L = {
+	const L: any = {
 		delta: r.read(5),       // 4
 		cwidth: r.read(10),     // 152
 		cheight: r.read(10),    // 102

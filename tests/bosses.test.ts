@@ -28,7 +28,7 @@ const invulnerable = g => {
 };
 
 test("each dungeon has its boss ; the doors close behind the ball", () => {
-	const cases = [[Mode.CHALLENGE, 0, Octopus], [Mode.ADVENTURE, 0, Snake], [Mode.ADVENTURE, 3, Snake], [Mode.ADVENTURE, 4, Tourneboule]];
+	const cases: [any, number, any][] = [[Mode.CHALLENGE, 0, Octopus], [Mode.ADVENTURE, 0, Snake], [Mode.ADVENTURE, 3, Snake], [Mode.ADVENTURE, 4, Tourneboule]];
 	for (const [mode, param, Boss] of cases) {
 		setup();
 		const g = bossGame(mode, param);

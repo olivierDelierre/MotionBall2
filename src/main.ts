@@ -118,5 +118,5 @@ start();
 // handy in the browser console, and for the tests :
 //   motionball.scenes.current.game                  the game being played
 //   motionball.play("adventure", 2)                 starts a game
-window.motionball = app;
-app.play = (mode, param = 0) => app.scenes.goto(new PlayScene(mode, param), true);
+(window as any).motionball = app;
+(app as any).play = (mode, param = 0) => app.scenes.goto(new PlayScene(mode, param), true);

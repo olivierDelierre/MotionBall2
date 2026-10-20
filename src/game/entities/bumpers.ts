@@ -53,7 +53,7 @@ class RoundBumper extends Entity {
 		return true;
 	}
 
-	update(dt) {
+	update(dt: number, _game?: any) {
 		this.hitAge = Math.min(HIT_TIME, this.hitAge + dt);
 	}
 

@@ -1,11 +1,12 @@
 #!/usr/bin/env node
+/* global motionball */
 /**
  * Browser smoke test : loads the built game (dist/) in Chromium, goes from
  * the title to the menu, starts every mode and every boss fight, and fails on
  * any error in the page.
  *
  * Needs Playwright : `npm install --no-save playwright && npx playwright install chromium`
- * (or set CHROMIUM_PATH to an installed Chromium). Run `npm run build` first.
+ * (or set CHROMIUM_PATH to an installed Chromium). Builds the game first (vite build).
  * Usage : npm run test:browser
  */
 import http from "node:http";
@@ -13,7 +14,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..");
+const root = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "..", "dist");
 
 let chromium;
 try {
@@ -25,7 +26,7 @@ try {
 
 // ----- a static server for the game folder -----
 
-const TYPES = { ".html": "text/html", ".js": "text/javascript", ".png": "image/png", ".jpg": "image/jpeg", ".wav": "audio/wav" };
+const TYPES = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".woff2": "font/woff2", ".wav": "audio/wav" };
 const server = http.createServer((req, res) => {
 	const file = path.join(root, decodeURIComponent(req.url.split("?")[0]));
 	if (!file.startsWith(root) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
@@ -53,7 +54,7 @@ page.on("console", m => {
 	if (m.type() === "error" && !/Failed to load resource/.test(m.text()))
 		errors.push("console : " + m.text());
 });
-// every file of the game must load (the web font may not, without network access)
+// every file of the game must load
 page.on("response", r => {
 	if (r.status() >= 400 && r.url().startsWith("http://localhost"))
 		errors.push("missing file : " + r.url());

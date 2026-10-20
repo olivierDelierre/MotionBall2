@@ -346,7 +346,7 @@ export class Snake extends Boss {
 
 	// ----- behaviour -----
 
-	choose(game, forced) {
+	choose(game, forced?: string) {
 		const angry = this.angry > 0 || this.berserk > 0;
 		this.state = forced || STATES[weightedIndex(angry ? STATE_WEIGHTS.angry : STATE_WEIGHTS.calm)];
 		this.accel = 1.05;

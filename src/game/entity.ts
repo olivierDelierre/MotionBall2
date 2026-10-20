@@ -41,7 +41,7 @@ export class Entity {
 	declare bounce: any;
 
 
-	constructor(x = 0, y = 0, layer = Layer.OBJECT) {
+	constructor(x = 0, y = 0, layer: number = Layer.OBJECT) {
 		this.x = x;
 		this.y = y;
 		this.prevX = x;
@@ -72,7 +72,7 @@ export class Entity {
 		return lerpPos(this.prevY, this.y);
 	}
 
-	update(dt, game) { }
+	update(dt: number, game?: any) { }
 
 	render(ctx, game) { }
 }
@@ -87,7 +87,7 @@ export class Effect extends Entity {
 	declare dead: boolean;
 
 
-	constructor(x, y, duration, layer = Layer.EFFECT) {
+	constructor(x, y, duration, layer: number = Layer.EFFECT) {
 		super(x, y, layer);
 		this.duration = duration;
 		this.age = 0;
@@ -97,7 +97,7 @@ export class Effect extends Entity {
 		return Math.min(1, this.age / this.duration);
 	}
 
-	update(dt) {
+	update(dt: number, game?: any) {
 		this.age += dt;
 		if (this.age >= this.duration)
 			this.dead = true;

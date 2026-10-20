@@ -276,7 +276,7 @@ function genObjects(d, m) {
  */
 function distObjectsMin(d, p) {
 	const list = d.dist_table[p.x][p.y];
-	let min = [-1, []];
+	let min: [number, any[]] = [-1, []];
 	let i = 0;
 	while (i < list.length) {
 		const e = list[i];
@@ -379,7 +379,7 @@ function genObjectsFinal(d) {
 	// Looks at the exits of a normal room :
 	// -1 no exit, -2 more than one exit (or not a normal room), else the only direction
 	const NO_EXIT = -1, SEVERAL = -2;
-	function isImpass(p, exclDir) {
+	function isImpass(p, exclDir?) {
 		const rt = room(d, p).rtype;
 		let result = (rt && rt.k === "normal") ? NO_EXIT : SEVERAL;
 		for (const dir of DIRS) {

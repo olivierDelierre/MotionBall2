@@ -511,7 +511,7 @@ function genSpecialRoom(r, obj) {
 	const btbl = (obj === Obj.METAL) ? L.shapes[Shape.MAGNET] : L.shapes[Shape.GHOST];
 
 	const doors = fillDoors(r, ctbl);
-	let blist = doors.blist.concat(genSeparators(r, ctbl, B.HOLE, 3));
+	const blist = doors.blist.concat(genSeparators(r, ctbl, B.HOLE, 3));
 
 	for (let i = 1; i <= 20; i++) {
 		const pos = genPos(ctbl, btbl, "spe-bumper");

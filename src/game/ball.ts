@@ -156,7 +156,7 @@ export class Ball extends Entity {
 
 		// above the maximum speed : brake hard
 		const max = specs.maxSpeed;
-		let speed = this.speed;
+		const speed = this.speed;
 		if (this.speedLimit && speed > max) {
 			let f = decay(PHYSICS.overSpeedDamping, dt);
 			if (speed > 3 * max)

@@ -25,13 +25,13 @@ class WebAudioBackend {
 
 
 	constructor() {
-		const Ctx = window.AudioContext || window.webkitAudioContext;
+		const Ctx = window.AudioContext || (window as any).webkitAudioContext;
 		this.ctx = new Ctx();
 		this.out = this.ctx.createGain();
 		this.out.connect(this.ctx.destination);
 		// one volume for the music, one for the effects
-		this.buses = { music: this.ctx.createGain(), sfx: this.ctx.createGain() };
-		for (const bus of Object.values(this.buses))
+		this.buses = { music: this.ctx.createGain(), sfx: this.ctx.createGain() } as Record<string, GainNode>;
+		for (const bus of Object.values<GainNode>(this.buses))
 			bus.connect(this.out);
 		this.buffers = new Map();
 	}
@@ -119,7 +119,7 @@ class ElementBackend {
 			a.src = url;
 			this.sources.set(name, url);
 			// don't wait for the whole file : it can take long, and failing is not fatal
-			const done = () => resolve();
+			const done = () => resolve(undefined);
 			a.addEventListener("canplaythrough", done, { once: true });
 			a.addEventListener("error", done, { once: true });
 			setTimeout(done, 3000);
@@ -240,7 +240,7 @@ export class AudioEngine {
 
 	/** Loads every sound. `progress(p)` is called with p in [0, 1]. */
 	async load(progress) {
-		const useWebAudio = location.protocol !== "file:" && (window.AudioContext || window.webkitAudioContext);
+		const useWebAudio = location.protocol !== "file:" && (window.AudioContext || (window as any).webkitAudioContext);
 		this.backend = useWebAudio ? new WebAudioBackend() : new ElementBackend();
 
 		this.applyBuses();

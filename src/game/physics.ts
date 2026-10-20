@@ -122,8 +122,8 @@ export function collideBall(ball, colliders, game) {
 			continue;   // already moving away
 
 		const speed = Math.hypot(ball.vx, ball.vy);
-		let rx = ball.vx - 2 * vn * hit.nx;
-		let ry = ball.vy - 2 * vn * hit.ny;
+		const rx = ball.vx - 2 * vn * hit.nx;
+		const ry = ball.vy - 2 * vn * hit.ny;
 		const rlen = Math.hypot(rx, ry) || 1;
 		const bounce = c.bounce || DEFAULT_BOUNCE;
 		const out = Math.max(speed * bounce.coef, bounce.min);
